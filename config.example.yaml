@@ -1,5 +1,5 @@
 # =============================================================================
-# ODC Backup — configurazione di progetto (TEMPLATE)
+# dm-backup — configurazione di progetto (TEMPLATE)
 # =============================================================================
 # Copia questo file in "config.yaml" e adattalo al progetto.
 # config.yaml NON viene versionato (vedi .gitignore): contiene i dati reali.
@@ -16,8 +16,12 @@ project:
 
 # --- Percorsi principali ---
 paths:
+  # Radice del film: qui il comando "init" (inizio film) crea la struttura
+  # elencata in project_folders (una volta sola).
+  project_root: "/Users/dit/Desktop/NOME_FILM"
   # Cartella che contiene le giornate (DAYxxx_yyyyMMdd), i REPORT e le sorgenti.
-  base_work: "/Users/dit/Desktop/ODC/DAILY FILES"
+  # Tipicamente una delle project_folders create da init.
+  base_work: "/Users/dit/Desktop/NOME_FILM/DAILY FILES"
   # Drive condiviso dove finiscono le still.
   drive: "/Volumes/DRIVE_CONDIVISO"
   # Sottocartella del drive dedicata alle still (se vuota, si usa <drive>/<DAY>).
@@ -43,18 +47,20 @@ sources:
     - "DRP"
     - "ALE"
   # Cartella sorgente delle still (usata da "still" e per l'autodetect del DAY).
-  still: "/Users/dit/Desktop/ODC/STILL_LAB"
+  still: "/Users/dit/Desktop/NOME_FILM/STILL_LAB"
 
 # --- Log ---
 log:
   folder_name: "SCRIPT LOGS"
 
-# --- Struttura cartelle creata dal comando "init" ---
-day_folders:
-  - "TODAY FILES"
-  - "DAILY FILES"
-  - "REPORTS"
-  - "STILL"
+# --- Struttura del film creata dal comando "init" (una volta, a inizio film) ---
+# Cartelle create dentro paths.project_root. È la struttura usata per tutta la
+# produzione: qui dentro vivono base_work, le sorgenti, i log, ecc.
+project_folders:
+  - "DAILY FILES"     # -> base_work
+  - "STILL_LAB"
+  - "SCRIPT LOGS"
+  - "SETTINGS"
 
 # --- Rinomina still per DaVinci Resolve ---
 # Scrivi qui, in parole semplici, cosa vuoi nel nome del file: l'eseguibile

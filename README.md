@@ -18,12 +18,14 @@ La logica dell'originale è conservata in [`legacy/00_DOCUMENTS_v1.4.md`](legacy
 
 ## Cosa fa
 
-| Comando | Azione |
-|---|---|
-| `backup_odc files` | Assembla i documenti del giorno (REPORTS + cartelle sorgente) e li copia **dentro la cartella DAY già esistente** su ogni disco di backup, con verifica checksum, manifest MHL e report finale. |
-| `backup_odc still` | Rileva automaticamente il DAY dai nomi delle still (`DAY###`) e le copia sul drive, con verifica. |
-| `backup_odc init` (o `odc_init`) | Crea la struttura cartelle della giornata (da YAML) e genera i file di riferimento per Silverstack e DaVinci Resolve. |
-| `backup_odc report <log>` | Rigenera il report HTML + PDF da un file di log esistente. |
+Un unico eseguibile, `dm-backup`, con quattro sottocomandi:
+
+| Comando | Quando | Azione |
+|---|---|---|
+| `dm-backup init` | **una volta, a inizio film** | Crea la struttura di cartelle del progetto (da YAML) sotto la radice del film e genera i file di riferimento per Silverstack e DaVinci Resolve. |
+| `dm-backup files` | ogni giorno | Assembla i documenti del giorno (REPORTS + cartelle sorgente) e li copia **dentro la cartella DAY già esistente** su ogni disco di backup, con verifica checksum, manifest MHL e report finale. |
+| `dm-backup still` | ogni giorno | Rileva automaticamente il DAY dai nomi delle still (`DAY###`) e le copia sul drive, con verifica. |
+| `dm-backup report <log>` | all'occorrenza | Rigenera il report HTML + PDF da un file di log esistente. |
 
 ### Miglioramenti rispetto all'originale
 
@@ -51,9 +53,18 @@ La logica dell'originale è conservata in [`legacy/00_DOCUMENTS_v1.4.md`](legacy
 git clone <questo-repo>
 cd Data-Wrangler-Data-Manager-Documents-Copy-Automation
 pip3 install -r requirements.txt
-chmod +x bin/backup_odc bin/odc_init
+chmod +x bin/dm-backup
 cp config.example.yaml config.yaml   # poi adatta config.yaml al progetto
 ```
+
+## Primo utilizzo su un nuovo film
+
+```bash
+dm-backup init          # crea la struttura del film (paths.project_root) + i file
+                        # di riferimento per Silverstack e Resolve. UNA volta sola.
+```
+
+Poi, ogni giorno, `dm-backup files` e `dm-backup still` (tipicamente da Stream Deck).
 
 ## Configurazione
 
@@ -63,7 +74,7 @@ che è commentato campo per campo). Il `config.yaml` reale **non va committato**
 
 Lo script cerca la configurazione in quest'ordine:
 1. `--config /percorso/config.yaml`
-2. variabile d'ambiente `ODC_CONFIG`
+2. variabile d'ambiente `DM_BACKUP_CONFIG`
 3. `./config.yaml` nella cartella corrente
 
 ### Pattern rinomina still (DaVinci Resolve)
@@ -94,15 +105,16 @@ compila Silverstack, quindi resta letterale.
 
 Azione **"Run"** (plugin che esegue comandi):
 - Command: `run`
-- Script: percorso completo a `bin/backup_odc`
+- Script: percorso completo a `bin/dm-backup`
 - Arguments (SENZA virgolette): `files` oppure `still`
 
 Esempi:
 ```
-run /Users/dit/.../bin/backup_odc files
-run /Users/dit/.../bin/backup_odc still
-run /Users/dit/.../bin/odc_init
+run /Users/dit/.../bin/dm-backup files
+run /Users/dit/.../bin/dm-backup still
 ```
+
+`init` si lancia da terminale a inizio film, non serve un pulsante Stream Deck.
 
 > **Importante:** la cartella `DAYxxx_yyyyMMdd` deve **già esistere** sui dischi di
 > backup (è dove sono stati scaricati i file video/audio della giornata). Il comando
@@ -124,8 +136,8 @@ che richiedono macOS reale (`osascript`, `/Volumes`) sono isolate in `gui.py` /
 ## Struttura del repository
 
 ```
-bin/                 wrapper eseguibili (backup_odc, odc_init) — puntati da Stream Deck
-src/odc_backup/      pacchetto Python
+bin/dm-backup        eseguibile unico (files/still/init/report) — puntato da Stream Deck
+src/dm_backup/       pacchetto Python
   config.py          caricamento/validazione YAML
   gui.py             finestre native macOS (osascript)
   diskutils.py       ricerca SPOLA, dischi montati, spazio libero
@@ -146,7 +158,7 @@ legacy/              trascrizione dello script AppleScript originale
 - Nuove cartelle sorgente per `files`: già supportate, basta aggiungerle a
   `sources.folders` nello YAML.
 - Nuovi token Resolve per la rinomina still: aggiungibili in `ALIAS_TO_TOKEN`
-  (`src/odc_backup/still.py`).
+  (`src/dm_backup/still.py`).
 - Verifica integrità incrementale / resume di copie interrotte.
 
 ---

@@ -1,8 +1,10 @@
-"""Comando `init`: scaffolding delle cartelle di giornata/progetto.
+"""Comando `init`: setup di INIZIO FILM.
 
-Dato il config e una cartella base, crea l'albero cartelle definito nello YAML
-(`day_folders`) e genera due file di riferimento pronti da incollare nei
-software di set:
+Va eseguito una volta sola all'inizio del film. Dato il config e la cartella
+radice del progetto, crea l'albero cartelle definito nello YAML
+(`project_folders`) — cioè la struttura usata per tutta la produzione (quella in
+cui poi vivono `base_work`, le sorgenti, ecc.) — e genera due file di
+riferimento pronti da incollare nei software di set:
 - `SILVERSTACK_report_path.txt` con la stringa-token del report path;
 - `RESOLVE_still_pattern.txt` con il pattern di rinomina still costruito dallo YAML.
 """
@@ -22,14 +24,15 @@ if TYPE_CHECKING:  # pragma: no cover
 SILVERSTACK_REPORT_PATH = "objectName$/REPORTS/$projectName$ $reportType$_$objectName$"
 
 
-def create_day_structure(config: "ProjectConfig", base: str) -> List[str]:
-    """Crea le cartelle elencate in `config.day_folders` dentro `base`.
+def create_project_structure(config: "ProjectConfig", base: str) -> List[str]:
+    """Crea le cartelle elencate in `config.project_folders` dentro `base`.
 
-    Ritorna la lista dei percorsi creati (o già esistenti).
+    `base` è la radice del film; le cartelle create sono la struttura usata per
+    tutta la produzione. Ritorna la lista dei percorsi creati (o già esistenti).
     """
     created: List[str] = []
     os.makedirs(base, exist_ok=True)
-    for folder in config.day_folders:
+    for folder in config.project_folders:
         path = os.path.join(base, folder)
         os.makedirs(path, exist_ok=True)
         created.append(path)
@@ -64,6 +67,6 @@ def write_reference_files(config: "ProjectConfig", base: str) -> List[str]:
 
 def run(config: "ProjectConfig", base: str) -> dict:
     """Esegue lo scaffolding completo e ritorna un riepilogo."""
-    folders = create_day_structure(config, base)
+    folders = create_project_structure(config, base)
     refs = write_reference_files(config, base)
     return {"base": base, "folders": folders, "references": refs}

@@ -1,13 +1,13 @@
 """Entry point CLI.
 
 Uso (da Stream Deck, senza virgolette sugli argomenti):
-    backup_odc files
-    backup_odc still
-    odc_init            (equivale a: backup_odc init)
-    backup_odc report <percorso_log>
+    dm-backup files             # uso quotidiano
+    dm-backup still             # uso quotidiano
+    dm-backup init [base]       # setup di INIZIO FILM (una volta sola)
+    dm-backup report <log>
 
-La configurazione è cercata in --config, poi in $ODC_CONFIG, poi in
-./config.yaml accanto all'eseguibile.
+La configurazione è cercata in --config, poi in $DM_BACKUP_CONFIG, poi in
+./config.yaml nella cartella corrente.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from . import gui
 
 
 def _default_config_path() -> str:
-    return os.environ.get("ODC_CONFIG", os.path.join(os.getcwd(), "config.yaml"))
+    return os.environ.get("DM_BACKUP_CONFIG", os.path.join(os.getcwd(), "config.yaml"))
 
 
 def _load_config(path: Optional[str]) -> ProjectConfig:
@@ -31,15 +31,21 @@ def _load_config(path: Optional[str]) -> ProjectConfig:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="backup_odc", description="ODC Backup — Data Manager tools")
+    parser = argparse.ArgumentParser(prog="dm-backup", description="dm-backup — Data Manager tools")
     parser.add_argument("--config", help="Percorso a config.yaml")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("files", help="Copia i documenti del giorno nei dischi di backup")
     sub.add_parser("still", help="Copia le still sul drive (autodetect DAY)")
 
-    p_init = sub.add_parser("init", help="Crea la struttura cartelle + file di riferimento")
-    p_init.add_argument("base", nargs="?", help="Cartella base (default: base_work del config)")
+    p_init = sub.add_parser(
+        "init",
+        help="SETUP INIZIO FILM: crea la struttura del progetto + file di riferimento",
+    )
+    p_init.add_argument(
+        "base", nargs="?",
+        help="Cartella radice del progetto/film (default: paths.project_root del config)",
+    )
 
     p_report = sub.add_parser("report", help="Rigenera il report da un file di log")
     p_report.add_argument("log_path", help="Percorso del file di log .txt")
@@ -63,9 +69,9 @@ def main(argv: Optional[list] = None) -> int:
         elif args.command == "still":
             workflows.run_still_mode(config)
         elif args.command == "init":
-            base = args.base or config.base_work
+            base = args.base or config.project_root or config.base_work
             out = workflows.run_init(config, base)
-            print(f"Struttura creata in: {out['base']}")
+            print(f"Struttura del progetto creata in: {out['base']}")
             for f in out["folders"]:
                 print(f"  cartella: {f}")
             for r in out["references"]:

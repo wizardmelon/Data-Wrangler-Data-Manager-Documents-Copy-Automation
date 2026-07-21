@@ -54,7 +54,7 @@ def ask_text(prompt: str, default: str = "") -> str:
     return _osascript(script)
 
 
-def display_alert(message: str, title: str = "ODC Backup") -> None:
+def display_alert(message: str, title: str = "dm-backup") -> None:
     script = (
         f'display alert "{_escape(title)}" message "{_escape(message)}" '
         'buttons {"OK"} default button 1'
@@ -65,7 +65,7 @@ def display_alert(message: str, title: str = "ODC Backup") -> None:
         pass
 
 
-def display_notification(message: str, title: str = "ODC Backup",
+def display_notification(message: str, title: str = "dm-backup",
                          subtitle: Optional[str] = None) -> None:
     sub = f' subtitle "{_escape(subtitle)}"' if subtitle else ""
     script = (

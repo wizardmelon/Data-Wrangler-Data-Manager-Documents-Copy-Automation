@@ -1,4 +1,4 @@
-"""ODC Backup — strumenti di copia e gestione file per Data Manager / DIT sul set.
+"""dm-backup — strumenti di copia e gestione file per Data Manager / DIT sul set.
 
 Migrazione in Python dello script AppleScript originale (00_DOCUMENTS.scpt v1.4),
 con configurazione per-progetto in YAML, verifica di integrità (checksum + MHL),

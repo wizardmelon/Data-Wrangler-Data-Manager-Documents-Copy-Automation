@@ -1,6 +1,6 @@
 import os
 
-from odc_backup import copyops
+from dm_backup import copyops
 
 
 def _make_tree(root, files):

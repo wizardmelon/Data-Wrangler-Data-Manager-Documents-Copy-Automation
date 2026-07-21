@@ -1,6 +1,6 @@
 import pytest
 
-from odc_backup.config import ConfigError, ProjectConfig
+from dm_backup.config import ConfigError, ProjectConfig
 
 
 BASE = {
@@ -8,7 +8,7 @@ BASE = {
     "paths": {"base_work": "/tmp/base", "drive": "/Volumes/DRIVE"},
     "disks": {"backup_disks": ["D1", "D2"], "disc_spola": "SPOLA"},
     "sources": {"folders": ["DRP", "ALE"], "still": "/tmp/still"},
-    "day_folders": ["TODAY FILES", "REPORTS"],
+    "project_folders": ["DAILY FILES", "SCRIPT LOGS"],
     "still_rename": {"prefix": "SC", "fields": ["scena", "clip"], "separator": "_"},
 }
 
@@ -18,7 +18,7 @@ def test_from_dict_ok():
     assert cfg.film == "TEST FILM"
     assert cfg.source_folders == ["DRP", "ALE"]
     assert cfg.backup_disks == ["D1", "D2"]
-    assert cfg.day_folders == ["TODAY FILES", "REPORTS"]
+    assert cfg.project_folders == ["DAILY FILES", "SCRIPT LOGS"]
     assert cfg.still_rename.fields == ["scena", "clip"]
     assert cfg.still_rename.day_token == "timeline"
 

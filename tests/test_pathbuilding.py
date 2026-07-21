@@ -1,6 +1,6 @@
 import os
 
-from odc_backup import workflows
+from dm_backup import workflows
 
 
 def test_build_folder_name():
@@ -15,7 +15,7 @@ def test_detect_day_from_stills(tmp_path):
     (still_dir / "SC03_A003_DAY008.jpg").write_text("x")
     (still_dir / "ignore.txt").write_text("x")
 
-    from odc_backup.config import ProjectConfig
+    from dm_backup.config import ProjectConfig
     cfg = ProjectConfig(film="F", base_work=str(tmp_path), source_still=str(still_dir))
     assert workflows.detect_day_from_stills(cfg.source_still) == ["DAY007", "DAY008"]
 

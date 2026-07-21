@@ -1,23 +1,24 @@
 import os
 
-from odc_backup.config import ProjectConfig, StillRename
-from odc_backup import scaffold
+from dm_backup.config import ProjectConfig, StillRename
+from dm_backup import scaffold
 
 
 def _cfg(base):
     return ProjectConfig(
         film="F",
-        base_work=base,
-        day_folders=["TODAY FILES", "DAILY FILES", "REPORTS", "STILL"],
+        project_root=base,
+        base_work=os.path.join(base, "DAILY FILES"),
+        project_folders=["DAILY FILES", "STILL_LAB", "SCRIPT LOGS", "SETTINGS"],
         still_rename=StillRename(prefix="SC", fields=["scena", "clip"], day_token="timeline"),
     )
 
 
-def test_create_day_structure(tmp_path):
-    base = str(tmp_path / "giornata")
+def test_create_project_structure(tmp_path):
+    base = str(tmp_path / "film")
     cfg = _cfg(base)
-    created = scaffold.create_day_structure(cfg, base)
-    for name in cfg.day_folders:
+    created = scaffold.create_project_structure(cfg, base)
+    for name in cfg.project_folders:
         assert os.path.isdir(os.path.join(base, name))
     assert len(created) == 4
 

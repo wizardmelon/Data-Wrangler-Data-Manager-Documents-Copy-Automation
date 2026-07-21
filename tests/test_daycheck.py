@@ -1,6 +1,6 @@
 import os
 
-from odc_backup import workflows, diskutils
+from dm_backup import workflows, diskutils
 
 
 def test_find_day_folder_on_disk_present(tmp_path):

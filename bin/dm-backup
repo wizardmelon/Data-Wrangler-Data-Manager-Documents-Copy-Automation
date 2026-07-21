@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""Wrapper eseguibile per dm-backup — punta qui l'azione "Run" dello Stream Deck.
+
+Esempi (argomenti SENZA virgolette):
+    dm-backup files            # copia documenti nei dischi di backup (uso quotidiano)
+    dm-backup still            # copia le still sul drive (uso quotidiano)
+    dm-backup init             # setup di INIZIO FILM: crea la struttura del progetto
+    dm-backup report /log.txt  # rigenera il report da un log
+"""
+
+import os
+import sys
+
+# Rende importabile il pacchetto src/dm_backup indipendentemente dalla cwd.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, "..", "src"))
+
+from dm_backup.__main__ import main  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(main())

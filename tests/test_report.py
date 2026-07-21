@@ -1,6 +1,6 @@
 import os
 
-from odc_backup import report
+from dm_backup import report
 
 
 SAMPLE_LOG = """LOG - BackUp file giornalieri - Python - v2.0

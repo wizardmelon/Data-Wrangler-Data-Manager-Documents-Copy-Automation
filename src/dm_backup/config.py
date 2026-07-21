@@ -46,6 +46,7 @@ class ProjectConfig:
     dmanager: str = ""
 
     # --- Percorsi principali ---
+    project_root: str = ""         # radice del film: dove `init` crea la struttura
     base_work: str = ""            # cartella con le giornate + i report
     drive: str = ""               # drive condiviso dove va il backup delle still
     destination_still: str = ""    # sottocartella del drive per le still
@@ -61,8 +62,8 @@ class ProjectConfig:
     # --- Log ---
     log_folder_name: str = "SCRIPT LOGS"
 
-    # --- Scaffolding (comando init) ---
-    day_folders: List[str] = field(default_factory=list)
+    # --- Scaffolding di inizio film (comando init) ---
+    project_folders: List[str] = field(default_factory=list)
 
     # --- Rinomina still ---
     still_rename: StillRename = field(default_factory=StillRename)
@@ -97,6 +98,7 @@ class ProjectConfig:
             dop=str(project.get("dop", "")),
             dit=str(project.get("dit", "")),
             dmanager=str(project.get("dmanager", "")),
+            project_root=str(paths.get("project_root", "")),
             base_work=str(paths.get("base_work", "")),
             drive=str(paths.get("drive", "")),
             destination_still=str(paths.get("destination_still", "")),
@@ -105,7 +107,7 @@ class ProjectConfig:
             source_folders=list(sources.get("folders", []) or []),
             source_still=str(sources.get("still", "")),
             log_folder_name=str(log.get("folder_name", "SCRIPT LOGS")),
-            day_folders=list(data.get("day_folders", []) or []),
+            project_folders=list(data.get("project_folders", []) or []),
             still_rename=still_rename,
         )
         cfg.validate()

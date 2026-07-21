@@ -1,7 +1,7 @@
 import pytest
 
-from odc_backup.config import StillRename
-from odc_backup import still
+from dm_backup.config import StillRename
+from dm_backup import still
 
 
 def test_build_pattern_appends_day_token():
