@@ -78,3 +78,42 @@ def test_recreate_folder_empties(tmp_path):
     copyops.recreate_folder(str(d))
     assert os.path.isdir(d)
     assert os.listdir(d) == []
+
+
+def test_delete_by_extension(tmp_path):
+    d = tmp_path / "05_STILL"
+    _make_tree(str(d), {"a.jpg": "A", "b.drx": "B", "sub/c.DRX": "C", "d.dpx": "D"})
+    removed = copyops.delete_by_extension(str(d), ".drx")
+    assert removed == 2
+    assert (d / "a.jpg").is_file()
+    assert (d / "d.dpx").is_file()
+    assert not (d / "b.drx").exists()
+    assert not (d / "sub" / "c.DRX").exists()
+
+
+def test_copy_recent_files(tmp_path):
+    import time
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+    _make_tree(str(src), {"new.jpg": "N", "old.jpg": "O"})
+    # Rende "old.jpg" vecchio (mtime 1 ora fa).
+    old = src / "old.jpg"
+    past = time.time() - 3600
+    os.utime(old, (past, past))
+
+    copied = copyops.copy_recent_files(str(src), str(dest), minutes=5)
+    assert copied == ["new.jpg"]
+    assert (dest / "new.jpg").is_file()
+    assert not (dest / "old.jpg").exists()
+
+
+def test_verify_files_partial(tmp_path):
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+    _make_tree(str(src), {"a.jpg": "A", "b.jpg": "B"})
+    _make_tree(str(dest), {"a.jpg": "A"})  # copiato solo a.jpg
+    ok = copyops.verify_files(str(src), str(dest), ["a.jpg"])
+    assert ok.ok
+    missing = copyops.verify_files(str(src), str(dest), ["a.jpg", "b.jpg"])
+    assert not missing.ok
+    assert "b.jpg" in missing.missing

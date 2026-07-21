@@ -20,6 +20,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List
 from xml.sax.saxutils import escape as _xml_escape
@@ -147,6 +148,71 @@ def copy_into(src: str, dest: str) -> None:
 
 def count_files(path: str) -> int:
     return sum(len(files) for _r, _d, files in os.walk(path)) if os.path.isdir(path) else 0
+
+
+def delete_by_extension(folder: str, ext: str) -> int:
+    """Elimina i file con estensione `ext` (es. '.drx') dentro `folder`.
+
+    Replica lo step 'DRX eliminate' della modalità still dell'originale.
+    Ritorna il numero di file eliminati.
+    """
+    if not os.path.isdir(folder):
+        return 0
+    ext_low = ext.lower()
+    removed = 0
+    for dirpath, _dirs, files in os.walk(folder):
+        for name in files:
+            if name.lower().endswith(ext_low):
+                os.remove(os.path.join(dirpath, name))
+                removed += 1
+    return removed
+
+
+def copy_recent_files(src: str, dest: str, minutes: int) -> List[str]:
+    """Copia in `dest` solo i file di `src` modificati negli ultimi `minutes`.
+
+    Replica il filtro 'ultimi N minuti' della modalità still (find -mmin).
+    Ritorna la lista dei percorsi relativi copiati.
+    """
+    if not os.path.isdir(src):
+        raise FileNotFoundError(f"Sorgente inesistente: {src}")
+    os.makedirs(dest, exist_ok=True)
+    cutoff = time.time() - minutes * 60
+    copied: List[str] = []
+    for dirpath, _dirs, files in os.walk(src):
+        for name in files:
+            full = os.path.join(dirpath, name)
+            try:
+                if os.path.getmtime(full) < cutoff:
+                    continue
+            except OSError:
+                continue
+            rel = os.path.relpath(full, src)
+            target = os.path.join(dest, rel)
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            shutil.copy2(full, target)
+            copied.append(rel)
+    return copied
+
+
+def verify_files(src: str, dest: str, rel_paths: List[str]) -> VerifyResult:
+    """Verifica per checksum solo i file elencati (per copie parziali, es. still)."""
+    missing: List[str] = []
+    mismatched: List[str] = []
+    for rel in rel_paths:
+        src_file = os.path.join(src, rel)
+        dest_file = os.path.join(dest, rel)
+        if not os.path.isfile(dest_file):
+            missing.append(rel)
+            continue
+        if hash_file(dest_file) != hash_file(src_file):
+            mismatched.append(rel)
+    return VerifyResult(
+        ok=not missing and not mismatched,
+        checked=len(rel_paths),
+        missing=missing,
+        mismatched=mismatched,
+    )
 
 
 def recreate_folder(path: str) -> None:

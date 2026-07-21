@@ -6,16 +6,16 @@ from dm_backup import scaffold
 
 def _cfg(base):
     return ProjectConfig(
-        film="F",
+        film="ISIDE",
         project_root=base,
-        base_work=os.path.join(base, "DAILY FILES"),
-        project_folders=["DAILY FILES", "STILL_LAB", "SCRIPT LOGS", "SETTINGS"],
+        daily_files=os.path.join(base, "DAILY_FILES"),
+        project_folders=["TODAY_FILES/04_DRP", "TODAY_FILES/05_STILL", "DAILY_FILES", "LOGS"],
         still_rename=StillRename(prefix="SC", fields=["scena", "clip"], day_token="timeline"),
     )
 
 
 def test_create_project_structure(tmp_path):
-    base = str(tmp_path / "film")
+    base = str(tmp_path / "ISIDE")
     cfg = _cfg(base)
     created = scaffold.create_project_structure(cfg, base)
     for name in cfg.project_folders:
@@ -24,7 +24,7 @@ def test_create_project_structure(tmp_path):
 
 
 def test_reference_files_written(tmp_path):
-    base = str(tmp_path / "giornata")
+    base = str(tmp_path / "ISIDE")
     cfg = _cfg(base)
     os.makedirs(base, exist_ok=True)
     refs = scaffold.write_reference_files(cfg, base)
@@ -34,7 +34,6 @@ def test_reference_files_written(tmp_path):
     rp = os.path.join(base, "RESOLVE_still_pattern.txt")
     assert os.path.isfile(ss)
     assert os.path.isfile(rp)
-
     # Silverstack: stringa letterale, $projectName$ NON sostituito.
     assert "$projectName$" in open(ss, encoding="utf-8").read()
     # Resolve: pattern costruito dallo YAML con DAY in coda.
@@ -42,7 +41,7 @@ def test_reference_files_written(tmp_path):
 
 
 def test_run_full(tmp_path):
-    base = str(tmp_path / "g")
+    base = str(tmp_path / "ISIDE")
     out = scaffold.run(_cfg(base), base)
     assert out["base"] == base
     assert len(out["folders"]) == 4

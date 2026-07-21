@@ -3,11 +3,12 @@
 # =============================================================================
 # Copia questo file in "config.yaml" e adattalo al progetto.
 # config.yaml NON viene versionato (vedi .gitignore): contiene i dati reali.
+# I percorsi qui sotto seguono la struttura reale (TODAY_FILES / DAILY_FILES).
 # =============================================================================
 
 # --- Crediti: finiscono nell'intestazione del log giornaliero ---
 project:
-  film: "NOME DEL FILM"
+  film: "NOME_FILM"
   prod: "PRODUZIONE"
   regia: "REGIA"
   dop: "DIRETTORE DELLA FOTOGRAFIA"
@@ -16,64 +17,73 @@ project:
 
 # --- Percorsi principali ---
 paths:
-  # Radice del film: qui il comando "init" (inizio film) crea la struttura
-  # elencata in project_folders (una volta sola).
-  project_root: "/Users/dit/Desktop/NOME_FILM"
-  # Cartella che contiene le giornate (DAYxxx_yyyyMMdd), i REPORT e le sorgenti.
-  # Tipicamente una delle project_folders create da init.
-  base_work: "/Users/dit/Desktop/NOME_FILM/DAILY FILES"
-  # Drive condiviso dove finiscono le still.
-  drive: "/Volumes/DRIVE_CONDIVISO"
-  # Sottocartella del drive dedicata alle still (se vuota, si usa <drive>/<DAY>).
-  destination_still: "/Volumes/DRIVE_CONDIVISO/STILLS"
+  # Radice del film: qui "init" crea la struttura (project_folders).
+  project_root: "/Users/utente/Desktop/NOME_FILM"
+  # Cartella di lavoro della giornata (still, ALE, DRP, ...).
+  today_files: "/Users/utente/Desktop/NOME_FILM/TODAY_FILES"
+  # Dove Silverstack crea il DAY master (= nome bin) e la cartella spola.
+  daily_files: "/Users/utente/Desktop/NOME_FILM/DAILY_FILES"
+  # Dove salvare i log (default: <project_root>/LOGS se vuoto).
+  log_folder: "/Users/utente/Desktop/NOME_FILM/LOGS"
+  # Destinazioni su Google Drive (si appende il nome del DAY, es. DAY023_20260525).
+  drive_reports: "/Users/utente/Library/CloudStorage/GoogleDrive-.../Il mio Drive/REPORTS"
+  drive_stills: "/Users/utente/Library/CloudStorage/GoogleDrive-.../Il mio Drive/NOME_FILM STILLs"
 
-# --- Dischi ---
-disks:
-  # Nomi dei volumi di backup montati in /Volumes. La cartella DAY deve GIÀ
-  # esistere su ciascuno (contiene i dailies video/audio); i documenti ci
-  # vengono aggiunti dentro.
-  backup_disks:
-    - "ODC_BACKUP_01"
-    - "ODC_BACKUP_02"
-  # Prefisso del disco "spola" (rilevato automaticamente in /Volumes; se più
-  # di uno, viene chiesto quale usare).
-  disc_spola: "ODC_SPOLA"
-
-# --- Sorgenti ---
-sources:
-  # Cartelle (dentro base_work) copiate dal comando "files".
+# --- Struttura interna (nomi cartelle, relativi a today_files/daily_files) ---
+structure:
+  reports_subfolder: "03_REPORTS"     # sottocartella report dentro il DAY master
+  still_source: "05_STILL"            # sorgente still (in TODAY_FILES)
+  # Cartelle copiate da "files" (in TODAY_FILES) dentro il DAY master.
   # ESTENDIBILE: aggiungi/rimuovi voci senza toccare il codice.
-  folders:
-    - "DRP"
-    - "ALE"
-  # Cartella sorgente delle still (usata da "still" e per l'autodetect del DAY).
-  still: "/Users/dit/Desktop/NOME_FILM/STILL_LAB"
+  files_folders:
+    - "04_DRP"
+    - "06_STILL_LAB"
+    - "05_STILL"
 
-# --- Log ---
-log:
-  folder_name: "SCRIPT LOGS"
+# --- Spola (il "shuttle" che va in post) ---
+spola:
+  # Prefisso del volume spola montato in /Volumes (es. rileva NOME_SHUTTLE13).
+  prefix: "NOME_SHUTTLE"
+  # I report della spola stanno in daily_files/<spola>/<qui>.
+  reports_subfolder: "03_REPORTS"
 
-# --- Struttura del film creata dal comando "init" (una volta, a inizio film) ---
-# Cartelle create dentro paths.project_root. È la struttura usata per tutta la
-# produzione: qui dentro vivono base_work, le sorgenti, i log, ecc.
+# --- Dischi di destinazione ---
+disks:
+  # Volumi montati in /Volumes che ricevono sempre il DAY master.
+  fixed_disks:
+    - "NOME_MASTER01"
+    - "NOME_TEMP01"
+  # Se true, anche la spola rilevata riceve la copia (come 3° disco).
+  include_spola: true
+
+# --- Modalità still ---
+still:
+  default_minutes: 5     # default del prompt "ultimi N minuti"
+  delete_drx: true       # elimina i .drx dalla sorgente still prima di copiare
+
+# --- Sicurezza (migliorie rispetto all'originale) ---
+safety:
+  verify_checksum: true  # svuota TODAY solo se i checksum tornano su tutti i dischi
+  write_mhl: true        # genera un manifest MHL per ogni copia
+  check_space: true      # controlla lo spazio libero prima di copiare
+
+# --- Struttura del film creata da "init" (una volta, a inizio film) ---
+# Cartelle create dentro paths.project_root (sono ammessi percorsi annidati).
 project_folders:
-  - "DAILY FILES"     # -> base_work
-  - "STILL_LAB"
-  - "SCRIPT LOGS"
-  - "SETTINGS"
+  - "TODAY_FILES/04_DRP"
+  - "TODAY_FILES/05_STILL"
+  - "TODAY_FILES/06_STILL_LAB"
+  - "DAILY_FILES"
+  - "LOGS"
 
 # --- Rinomina still per DaVinci Resolve ---
-# Scrivi qui, in parole semplici, cosa vuoi nel nome del file: l'eseguibile
-# costruisce il pattern %{...} da incollare in Resolve (Deliver > Custom name).
-# Il token che porta il DAY viene AGGIUNTO IN CODA automaticamente: NON elencarlo.
-#
-# Alias disponibili: scena, clip, timeline, reel, shot, take, camera, roll, program
-# Esempio: fields [scena, clip] con day_token "timeline" ->
-#          SC%{Scene}_%{Clip Name}_%{Timeline Name}
+# Scrivi in parole semplici cosa vuoi nel nome: l'eseguibile costruisce il
+# pattern %{...} da incollare in Resolve. Il token col DAY va in coda da solo.
+# Alias: scena, clip, timeline, reel, shot, take, camera, roll, program
 still_rename:
   prefix: "SC"
   fields:
     - "scena"
     - "clip"
   separator: "_"
-  day_token: "timeline"   # token che contiene "DAY###" (default: timeline)
+  day_token: "timeline"

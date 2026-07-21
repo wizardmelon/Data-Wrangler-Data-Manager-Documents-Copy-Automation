@@ -3,6 +3,7 @@ config.yaml
 
 # Log e report generati
 *.log
+LOGS/
 SCRIPT LOGS/
 *_report.html
 *_report.pdf

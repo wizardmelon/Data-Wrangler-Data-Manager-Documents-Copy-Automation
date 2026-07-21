@@ -69,7 +69,7 @@ def main(argv: Optional[list] = None) -> int:
         elif args.command == "still":
             workflows.run_still_mode(config)
         elif args.command == "init":
-            base = args.base or config.project_root or config.base_work
+            base = args.base or config.project_root or config.daily_files
             out = workflows.run_init(config, base)
             print(f"Struttura del progetto creata in: {out['base']}")
             for f in out["folders"]:

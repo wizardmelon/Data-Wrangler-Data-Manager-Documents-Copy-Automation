@@ -4,35 +4,65 @@ from dm_backup.config import ConfigError, ProjectConfig
 
 
 BASE = {
-    "project": {"film": "TEST FILM", "prod": "PROD", "dop": "VANNI"},
-    "paths": {"base_work": "/tmp/base", "drive": "/Volumes/DRIVE"},
-    "disks": {"backup_disks": ["D1", "D2"], "disc_spola": "SPOLA"},
-    "sources": {"folders": ["DRP", "ALE"], "still": "/tmp/still"},
-    "project_folders": ["DAILY FILES", "SCRIPT LOGS"],
+    "project": {"film": "ISIDE", "prod": "CATTLEYA", "dop": "CATINARI"},
+    "paths": {
+        "project_root": "/tmp/ISIDE",
+        "today_files": "/tmp/ISIDE/TODAY_FILES",
+        "daily_files": "/tmp/ISIDE/DAILY_FILES",
+        "drive_reports": "/tmp/Drive/REPORTS",
+        "drive_stills": "/tmp/Drive/STILLs",
+    },
+    "structure": {
+        "reports_subfolder": "03_REPORTS",
+        "still_source": "05_STILL",
+        "files_folders": ["04_DRP", "06_STILL_LAB", "05_STILL"],
+    },
+    "spola": {"prefix": "ISIDE_SHUTTLE", "reports_subfolder": "03_REPORTS"},
+    "disks": {"fixed_disks": ["ISIDE_MASTER01", "ISIDE_TEMP01"], "include_spola": True},
+    "still": {"default_minutes": 5, "delete_drx": True},
+    "project_folders": ["TODAY_FILES/04_DRP", "DAILY_FILES", "LOGS"],
     "still_rename": {"prefix": "SC", "fields": ["scena", "clip"], "separator": "_"},
 }
 
 
 def test_from_dict_ok():
     cfg = ProjectConfig.from_dict(BASE)
-    assert cfg.film == "TEST FILM"
-    assert cfg.source_folders == ["DRP", "ALE"]
-    assert cfg.backup_disks == ["D1", "D2"]
-    assert cfg.project_folders == ["DAILY FILES", "SCRIPT LOGS"]
-    assert cfg.still_rename.fields == ["scena", "clip"]
-    assert cfg.still_rename.day_token == "timeline"
+    assert cfg.film == "ISIDE"
+    assert cfg.files_folders == ["04_DRP", "06_STILL_LAB", "05_STILL"]
+    assert cfg.fixed_disks == ["ISIDE_MASTER01", "ISIDE_TEMP01"]
+    assert cfg.spola_prefix == "ISIDE_SHUTTLE"
+    assert cfg.include_spola_as_disk is True
+    assert cfg.still_default_minutes == 5
+    assert cfg.project_folders == ["TODAY_FILES/04_DRP", "DAILY_FILES", "LOGS"]
+
+
+def test_derived_paths():
+    cfg = ProjectConfig.from_dict(BASE)
+    assert cfg.still_source_path == "/tmp/ISIDE/TODAY_FILES/05_STILL"
+    assert cfg.files_folder_paths()[0] == "/tmp/ISIDE/TODAY_FILES/04_DRP"
+    assert cfg.log_dir == "/tmp/ISIDE/LOGS"  # default: <project_root>/LOGS
+
+
+def test_log_folder_override():
+    data = dict(BASE)
+    data["paths"] = dict(BASE["paths"], log_folder="/custom/logs")
+    cfg = ProjectConfig.from_dict(data)
+    assert cfg.log_dir == "/custom/logs"
+
+
+def test_safety_defaults_true():
+    cfg = ProjectConfig.from_dict(BASE)
+    assert cfg.verify_checksum and cfg.write_mhl and cfg.check_space
 
 
 def test_missing_film_raises():
-    data = {"paths": {"base_work": "/tmp"}}
     with pytest.raises(ConfigError):
-        ProjectConfig.from_dict(data)
+        ProjectConfig.from_dict({"paths": {"project_root": "/tmp"}})
 
 
-def test_missing_base_work_raises():
-    data = {"project": {"film": "X"}}
+def test_missing_roots_raises():
     with pytest.raises(ConfigError):
-        ProjectConfig.from_dict(data)
+        ProjectConfig.from_dict({"project": {"film": "X"}})
 
 
 def test_load_from_file(tmp_path):
@@ -40,7 +70,7 @@ def test_load_from_file(tmp_path):
     p = tmp_path / "config.yaml"
     p.write_text(yaml.safe_dump(BASE), encoding="utf-8")
     cfg = ProjectConfig.load(str(p))
-    assert cfg.dop == "VANNI"
+    assert cfg.dop == "CATINARI"
 
 
 def test_load_missing_file():

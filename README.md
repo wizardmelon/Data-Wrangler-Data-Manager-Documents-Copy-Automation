@@ -23,9 +23,34 @@ Un unico eseguibile, `dm-backup`, con quattro sottocomandi:
 | Comando | Quando | Azione |
 |---|---|---|
 | `dm-backup init` | **una volta, a inizio film** | Crea la struttura di cartelle del progetto (da YAML) sotto la radice del film e genera i file di riferimento per Silverstack e DaVinci Resolve. |
-| `dm-backup files` | ogni giorno | Assembla i documenti del giorno (REPORTS + cartelle sorgente) e li copia **dentro la cartella DAY già esistente** su ogni disco di backup, con verifica checksum, manifest MHL e report finale. |
-| `dm-backup still` | ogni giorno | Rileva automaticamente il DAY dai nomi delle still (`DAY###`) e le copia sul drive, con verifica. |
+| `dm-backup files` | ogni giorno | Consolida i documenti del giorno nel DAY master di `DAILY_FILES` e li copia **dentro la cartella DAY già esistente** su ogni disco (dischi fissi + spola), con verifica checksum, manifest MHL e report finale. |
+| `dm-backup still` | ogni giorno | Rileva il DAY, elimina i `.drx` dalla sorgente e copia sul Drive le still degli ultimi N minuti (chiesti a schermo). |
 | `dm-backup report <log>` | all'occorrenza | Rigenera il report HTML + PDF da un file di log esistente. |
+
+### Struttura cartelle e flusso
+
+```
+<project_root>/            (es. .../Desktop/ISIDE)
+├── TODAY_FILES/           lavoro della giornata
+│   ├── 04_DRP  05_STILL  06_STILL_LAB   (nomi configurabili)
+└── DAILY_FILES/
+    ├── <SPOLA>/03_REPORTS               report della spola (nome = shuttle)
+    └── DAYxxx_yyyymmdd/                 MASTER (creata da Silverstack = nome bin)
+        └── 03_REPORTS
+```
+
+Flusso **`files`**: (1) rileva la cartella DAY master in `DAILY_FILES` e la spola montata;
+(2) copia i report della spola → `DAYxxx/03_REPORTS`; (3) copia i report → `Drive/REPORTS/DAYxxx`;
+(4) copia le cartelle di `TODAY_FILES` → DAY master; (5) copia il DAY master **dentro** il DAY
+già esistente su ogni disco (fissi + spola); (6) svuota `TODAY_FILES` **solo** se la verifica
+checksum è ok su tutti i dischi.
+
+Flusso **`still`**: rileva il DAY → elimina i `.drx` → chiede i minuti → copia le still più
+recenti su `Drive/<stills>/DAYxxx`.
+
+> Il numero DAY e il nome della cartella (`DAY023_20260525`) vengono **rilevati** dalla cartella
+> creata da Silverstack, non costruiti dalla data odierna: la data nel nome è quella di ripresa
+> (una copia lanciata dopo mezzanotte usa comunque il giorno di ripresa).
 
 ### Miglioramenti rispetto all'originale
 
@@ -116,10 +141,10 @@ run /Users/dit/.../bin/dm-backup still
 
 `init` si lancia da terminale a inizio film, non serve un pulsante Stream Deck.
 
-> **Importante:** la cartella `DAYxxx_yyyyMMdd` deve **già esistere** sui dischi di
-> backup (è dove sono stati scaricati i file video/audio della giornata). Il comando
-> `files` aggiunge i documenti *dentro* quel DAY. Se il DAY manca, lo script si ferma
-> con un avviso (disco sbagliato o dailies non ancora scaricati).
+> **Importante:** la cartella `DAYxxx_yyyymmdd` deve **già esistere** sui dischi di
+> backup (è dove Silverstack ha scaricato i file video/audio della giornata). Il comando
+> `files` aggiunge i documenti *dentro* quel DAY, in merge. Se il DAY manca, lo script si
+> ferma con un avviso (disco sbagliato o dailies non ancora scaricati).
 
 ## Sviluppo e test
 
