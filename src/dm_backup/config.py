@@ -8,6 +8,7 @@ DAILY_FILES / dischi di backup), ricostruita dai log del progetto ISIDE.
 
 from __future__ import annotations
 
+import datetime as _dt
 import os
 from dataclasses import dataclass, field
 from typing import List
@@ -17,6 +18,15 @@ import yaml
 
 class ConfigError(Exception):
     """Errore di configurazione con messaggio leggibile per l'utente."""
+
+
+def shoot_date(offset_hours: int) -> str:
+    """Data di ripresa in formato yyyymmdd = (adesso - offset_hours).
+
+    Replica il `date -v -<N>H +%Y%m%d` dell'originale: sposta indietro l'orario
+    così una copia lanciata dopo mezzanotte usa comunque il giorno di ripresa.
+    """
+    return (_dt.datetime.now() - _dt.timedelta(hours=offset_hours)).strftime("%Y%m%d")
 
 
 @dataclass
@@ -62,14 +72,19 @@ class ProjectConfig:
     fixed_disks: List[str] = field(default_factory=list)  # sempre destinazioni
     include_spola_as_disk: bool = True      # la spola è anche destinazione
 
+    # --- Nome DAY ---
+    day_hour_offset: int = 6                 # ore da sottrarre per la data di ripresa
+
     # --- Modalità still ---
     still_default_minutes: int = 5          # default del prompt "ultimi N minuti"
     still_delete_drx: bool = True           # elimina i .drx prima della copia
+    still_extension: str = ".jpg"           # estensione delle still copiate
 
     # --- Sicurezza ---
     verify_checksum: bool = True
     write_mhl: bool = True
     check_space: bool = True
+    cleanup_spola_folder: bool = True       # rm -rf della cartella spola a fine copia
 
     # --- Log ---
     log_folder_name: str = "LOGS"           # usato se log_folder non è assoluto
@@ -107,6 +122,7 @@ class ProjectConfig:
         disks = data.get("disks", {}) or {}
         still_cfg = data.get("still", {}) or {}
         safety = data.get("safety", {}) or {}
+        cleanup = data.get("cleanup", {}) or {}
 
         if not project.get("film"):
             raise ConfigError("Campo obbligatorio mancante: project.film")
@@ -139,11 +155,14 @@ class ProjectConfig:
             spola_reports_subfolder=str(spola.get("reports_subfolder", "03_REPORTS")),
             fixed_disks=list(disks.get("fixed_disks", []) or []),
             include_spola_as_disk=bool(disks.get("include_spola", True)),
+            day_hour_offset=int(data.get("day_hour_offset", 6)),
             still_default_minutes=int(still_cfg.get("default_minutes", 5)),
             still_delete_drx=bool(still_cfg.get("delete_drx", True)),
+            still_extension=str(still_cfg.get("extension", ".jpg")),
             verify_checksum=bool(safety.get("verify_checksum", True)),
             write_mhl=bool(safety.get("write_mhl", True)),
             check_space=bool(safety.get("check_space", True)),
+            cleanup_spola_folder=bool(cleanup.get("spola_folder", True)),
             project_folders=list(data.get("project_folders", []) or []),
             still_rename=still_rename,
         )

@@ -56,16 +56,28 @@ disks:
   # Se true, anche la spola rilevata riceve la copia (come 3° disco).
   include_spola: true
 
+# --- Nome della cartella DAY ---
+# Il numero DAY si legge dai nomi dei jpg delle still; la data è (adesso - N ore).
+# Alza il valore se le notturne finiscono dopo mezzanotte: 8 copre le riprese
+# tardive senza rischi (non lanci mai il backup nelle prime ore dello stesso
+# giorno di calendario). 6 = come lo script originale, 10 = ancora sicuro.
+day_hour_offset: 8
+
 # --- Modalità still ---
 still:
   default_minutes: 5     # default del prompt "ultimi N minuti"
   delete_drx: true       # elimina i .drx dalla sorgente still prima di copiare
+  extension: ".jpg"      # copia solo i file con questa estensione
 
 # --- Sicurezza (migliorie rispetto all'originale) ---
 safety:
   verify_checksum: true  # svuota TODAY solo se i checksum tornano su tutti i dischi
   write_mhl: true        # genera un manifest MHL per ogni copia
   check_space: true      # controlla lo spazio libero prima di copiare
+
+# --- Pulizia ---
+cleanup:
+  spola_folder: true     # rm -rf di DAILY_FILES/<spola> a fine copia (come originale)
 
 # --- Struttura del film creata da "init" (una volta, a inizio film) ---
 # Cartelle create dentro paths.project_root (sono ammessi percorsi annidati).

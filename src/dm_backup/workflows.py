@@ -25,33 +25,26 @@ from __future__ import annotations
 
 import os
 import re
-from typing import List, Optional, Tuple
+import shutil
+from typing import List, Optional
 
 from . import copyops, diskutils, gui, report, scaffold
-from .config import ProjectConfig
+from .config import ProjectConfig, shoot_date
 from .daylog import DayLogger
 
-# Nome cartella DAY master: es. "DAY023_20260525" (DAY + numero + _ + data ripresa).
-_DAY_FOLDER_RE = re.compile(r"^DAY\d+_\d{6,8}$", re.IGNORECASE)
+# Numero DAY nei nomi file: "DAY" seguito da cifre (es. DAY023 -> "023").
 _DAY_NUM_RE = re.compile(r"DAY(\d+)", re.IGNORECASE)
 
 
 # ----------------------------------------------------------------------
 # Helper puri (testabili)
 # ----------------------------------------------------------------------
-def list_day_folders(daily_files: str) -> List[str]:
-    """Cartelle DAY master presenti in DAILY_FILES (create da Silverstack)."""
-    if not os.path.isdir(daily_files):
-        return []
-    return sorted(
-        name for name in os.listdir(daily_files)
-        if os.path.isdir(os.path.join(daily_files, name)) and _DAY_FOLDER_RE.match(name)
-    )
+def build_folder_name(day_num: str, offset_hours: int) -> str:
+    """Costruisce il nome cartella DAY come l'originale: DAY<num>_<data-ripresa>.
 
-
-def day_number(day_folder_name: str) -> str:
-    m = _DAY_NUM_RE.search(day_folder_name)
-    return m.group(1) if m else ""
+    Es. ('023', 6) -> 'DAY023_20260525'. La data è (adesso - offset ore).
+    """
+    return f"DAY{day_num}_{shoot_date(offset_hours)}"
 
 
 def find_day_folder_on_disk(disk_root: str, day_num: str) -> Optional[str]:
@@ -82,24 +75,25 @@ def detect_day_from_stills(source_still: str) -> List[str]:
 
 
 # ----------------------------------------------------------------------
-# Rilevamento DAY master e spola (con menu se multipli)
+# Rilevamento numero DAY (dalle still) e spola (con menu se multipli)
 # ----------------------------------------------------------------------
-def resolve_master_day(config: ProjectConfig) -> Tuple[str, str]:
-    """Ritorna (nome_cartella_DAY, numero_DAY) rilevando il DAY in DAILY_FILES.
+def resolve_day_number(config: ProjectConfig) -> str:
+    """Numero DAY, rilevato dai nomi dei jpg nella cartella still (come l'originale).
 
-    NB: la cartella la crea Silverstack (= nome del bin) e il suo nome contiene
-    la data di RIPRESA, non quella odierna: per questo va rilevata, non costruita.
+    Una still: usa quello. Più DAY: menu. Nessuno: chiede a mano ("Inserisci DAY:").
+    Le still vengono esportate più volte al giorno, prima che esistano i report:
+    per questo il DAY si legge da lì e la cartella si costruisce, non si rileva.
     """
-    folders = list_day_folders(config.daily_files)
-    if not folders:
-        raise RuntimeError(
-            f"Nessuna cartella DAY trovata in {config.daily_files}. "
-            "Crea prima il DAY in Silverstack."
-        )
-    chosen = folders[0] if len(folders) == 1 else gui.choose_from_list(
-        folders, "Più cartelle DAY trovate. Quale usare?"
-    )
-    return chosen, day_number(chosen)
+    nums = detect_day_from_stills(config.still_source_path)
+    if len(nums) == 1:
+        return nums[0]
+    if len(nums) > 1:
+        choice = gui.choose_from_list([f"DAY{n}" for n in nums],
+                                      "Più DAY trovati nelle still. Quale usare?")
+        return re.sub(r"\D", "", choice)
+    manual = gui.ask_text(
+        "Nessun jpg con 'DAY###' nella cartella still. Inserisci DAY:")
+    return re.sub(r"\D", "", manual)
 
 
 def resolve_spola(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_ROOT) -> str:
@@ -124,19 +118,21 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     spola = resolve_spola(config, volumes_root)
     log.write(f"Spola trovata: {spola}")
 
-    day_name, day_num = resolve_master_day(config)
+    day_num = resolve_day_number(config)
+    day_name = build_folder_name(day_num, config.day_hour_offset)
     log.write(f"Day trovato: {day_num} (cartella {day_name})")
 
     master = os.path.join(config.daily_files, day_name)
+    os.makedirs(master, exist_ok=True)
     reports_dir = os.path.join(master, config.reports_subfolder)
 
-    # 1) Report della spola -> DAY_master/REPORTS
-    spola_reports = os.path.join(config.daily_files, spola, config.spola_reports_subfolder)
-    if os.path.isdir(spola_reports):
-        copyops.copy_into(spola_reports, reports_dir)
-        log.write(f"{copyops.count_files(spola_reports)} report spola copiati in {reports_dir}")
-    else:
-        log.write(f"ATTENZIONE: report spola non trovati in {spola_reports}")
+    # 1) Report della spola -> DAY_master/REPORTS (stop se mancano, come l'originale)
+    spola_folder = os.path.join(config.daily_files, spola)
+    spola_reports = os.path.join(spola_folder, config.spola_reports_subfolder)
+    if not os.path.isdir(spola_reports):
+        _fail(log, f"La cartella REPORT della spola non esiste: {spola_reports}")
+    copyops.copy_into(spola_reports, reports_dir)
+    log.write(f"{copyops.count_files(spola_reports)} report spola copiati in {reports_dir}")
 
     # 2) Report -> Drive/REPORTS/<DAY>
     if config.drive_reports:
@@ -185,13 +181,17 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
         else:
             log.write(f"Copia completata su {disk} (verifica disattivata)")
 
-    # 5) Pulizia TODAY: solo se tutte le verifiche sono passate
+    # 5) Pulizia: solo se tutte le verifiche sono passate
     if all_verified:
         for folder in config.files_folders:
             src = os.path.join(config.today_files, folder)
             if os.path.isdir(src):
                 copyops.recreate_folder(src)
                 log.write(f"{src} eliminata e ricreata vuota.")
+        # Cancella la cartella della spola in DAILY_FILES (report già spostato).
+        if config.cleanup_spola_folder and os.path.isdir(spola_folder):
+            shutil.rmtree(spola_folder)
+            log.write(f"Cartella spola rimossa: {spola_folder}")
         gui.display_notification("Backup documenti completato e verificato.")
     else:
         gui.display_alert("Verifica integrità fallita: le cartelle TODAY NON sono state svuotate.")
@@ -210,20 +210,8 @@ def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     log = DayLogger(config, "still")
     log.start()
 
-    # DAY: prima prova dal master in DAILY_FILES, poi dai nomi delle still.
-    try:
-        day_name, day_num = resolve_master_day(config)
-    except RuntimeError:
-        nums = detect_day_from_stills(config.still_source_path)
-        if not nums:
-            _fail(log, "Nessun DAY rilevato (né in DAILY_FILES né dalle still).")
-        if len(nums) == 1:
-            day_num = nums[0]
-        else:
-            day_num = gui.choose_from_list(
-                [f"DAY{n}" for n in nums], "Più DAY trovati. Quale usare?"
-            ).replace("DAY", "")
-        day_name = f"DAY{day_num}"
+    day_num = resolve_day_number(config)
+    day_name = build_folder_name(day_num, config.day_hour_offset)
     log.write(f"Day trovato: {day_num}")
 
     src = config.still_source_path
@@ -242,7 +230,7 @@ def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     log.write(f"Selezionati {minutes} minuti di file da copiare.")
 
     dest = os.path.join(config.drive_stills, day_name)
-    copied = copyops.copy_recent_files(src, dest, minutes)
+    copied = copyops.copy_recent_files(src, dest, minutes, only_ext=config.still_extension)
     log.write(f"Inizio copia di {len(copied)} still da {src} a {dest}")
 
     if config.verify_checksum and copied:

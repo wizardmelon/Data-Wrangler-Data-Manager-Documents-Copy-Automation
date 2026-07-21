@@ -1,20 +1,22 @@
+import datetime
 import os
 
 from dm_backup import workflows
+from dm_backup.config import shoot_date
 
 
-def test_list_day_folders(tmp_path):
-    daily = tmp_path / "DAILY_FILES"
-    (daily / "DAY023_20260525").mkdir(parents=True)
-    (daily / "DAY024_20260526").mkdir()
-    (daily / "ISIDE_SHUTTLE13").mkdir()   # cartella spola, NON un DAY
-    (daily / "note.txt").write_text("x")
-    assert workflows.list_day_folders(str(daily)) == ["DAY023_20260525", "DAY024_20260526"]
+def test_shoot_date_offset():
+    # Con offset 0 la data è quella di oggi; con offset grande può tornare a ieri.
+    today = datetime.datetime.now().strftime("%Y%m%d")
+    assert shoot_date(0) == today
+    # 26 ore fa è sempre un giorno diverso da oggi.
+    assert shoot_date(26) != today
 
 
-def test_day_number():
-    assert workflows.day_number("DAY023_20260525") == "023"
-    assert workflows.day_number("qualcosa") == ""
+def test_build_folder_name():
+    name = workflows.build_folder_name("023", offset_hours=0)
+    today = datetime.datetime.now().strftime("%Y%m%d")
+    assert name == f"DAY023_{today}"
 
 
 def test_detect_day_from_stills(tmp_path):

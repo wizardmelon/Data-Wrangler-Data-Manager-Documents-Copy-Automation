@@ -107,6 +107,16 @@ def test_copy_recent_files(tmp_path):
     assert not (dest / "old.jpg").exists()
 
 
+def test_copy_recent_files_only_ext(tmp_path):
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+    _make_tree(str(src), {"a.jpg": "A", "b.drx": "B", "c.txt": "C"})
+    copied = copyops.copy_recent_files(str(src), str(dest), minutes=60, only_ext=".jpg")
+    assert copied == ["a.jpg"]
+    assert (dest / "a.jpg").is_file()
+    assert not (dest / "b.drx").exists()
+
+
 def test_verify_files_partial(tmp_path):
     src = tmp_path / "src"
     dest = tmp_path / "dest"

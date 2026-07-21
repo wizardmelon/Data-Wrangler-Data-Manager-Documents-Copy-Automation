@@ -11,6 +11,8 @@ import datetime as _dt
 import os
 from typing import TYPE_CHECKING
 
+from .config import shoot_date
+
 if TYPE_CHECKING:  # pragma: no cover
     from .config import ProjectConfig
 
@@ -22,7 +24,9 @@ class DayLogger:
     def __init__(self, config: "ProjectConfig", what: str, date: str | None = None):
         self.config = config
         self.what = what
-        self.date = date or _dt.datetime.now().strftime("%Y%m%d")
+        # Data di ripresa (adesso - offset): tiene insieme nello stesso file di
+        # log anche i run lanciati dopo mezzanotte.
+        self.date = date or shoot_date(config.day_hour_offset)
         self.log_dir = config.log_dir
         self.log_file = os.path.join(self.log_dir, f"backupScript_log_{self.date}.txt")
 

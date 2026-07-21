@@ -39,18 +39,28 @@ Un unico eseguibile, `dm-backup`, con quattro sottocomandi:
         └── 03_REPORTS
 ```
 
-Flusso **`files`**: (1) rileva la cartella DAY master in `DAILY_FILES` e la spola montata;
-(2) copia i report della spola → `DAYxxx/03_REPORTS`; (3) copia i report → `Drive/REPORTS/DAYxxx`;
-(4) copia le cartelle di `TODAY_FILES` → DAY master; (5) copia il DAY master **dentro** il DAY
-già esistente su ogni disco (fissi + spola); (6) svuota `TODAY_FILES` **solo** se la verifica
-checksum è ok su tutti i dischi.
+Flusso **`files`**: (1) rileva la spola montata e il numero DAY (dai nomi jpg delle still);
+(2) copia i report della spola → `DAYxxx/03_REPORTS` (si ferma se mancano); (3) copia i report →
+`Drive/REPORTS/DAYxxx`; (4) copia le cartelle di `TODAY_FILES` → DAY master; (5) copia il DAY
+master **dentro** il DAY già esistente su ogni disco (fissi + spola); (6) svuota `TODAY_FILES`
+(e rimuove la cartella spola) **solo** se la verifica checksum è ok su tutti i dischi.
 
-Flusso **`still`**: rileva il DAY → elimina i `.drx` → chiede i minuti → copia le still più
-recenti su `Drive/<stills>/DAYxxx`.
+Flusso **`still`**: rileva il DAY → elimina i `.drx` → chiede i minuti → copia su
+`Drive/<stills>/DAYxxx` solo i `*.jpg` degli ultimi N minuti.
 
-> Il numero DAY e il nome della cartella (`DAY023_20260525`) vengono **rilevati** dalla cartella
-> creata da Silverstack, non costruiti dalla data odierna: la data nel nome è quella di ripresa
-> (una copia lanciata dopo mezzanotte usa comunque il giorno di ripresa).
+### Come viene identificata la cartella DAY
+
+Il nome (`DAY023_20260525`) viene **costruito**, non letto:
+
+- **numero DAY** dai nomi dei jpg nella cartella still (`grep 'DAY[0-9][0-9][0-9]'`); menu se
+  più d'uno, richiesta manuale se nessuno;
+- **data** = *adesso − `day_hour_offset` ore*. Serve perché le still si esportano più volte al
+  giorno (prima che esistano i report) e il lavoro può finire dopo mezzanotte: sottraendo qualche
+  ora, un run delle 01:00 usa comunque il giorno di ripresa.
+
+`day_hour_offset` è nello YAML: **8** copre le notturne tardive senza rischi (non lanci mai il
+backup nelle prime ore dello stesso giorno di calendario); 6 = come lo script originale, 10 =
+ancora sicuro.
 
 ### Miglioramenti rispetto all'originale
 

@@ -168,19 +168,24 @@ def delete_by_extension(folder: str, ext: str) -> int:
     return removed
 
 
-def copy_recent_files(src: str, dest: str, minutes: int) -> List[str]:
+def copy_recent_files(src: str, dest: str, minutes: int,
+                      only_ext: str | None = None) -> List[str]:
     """Copia in `dest` solo i file di `src` modificati negli ultimi `minutes`.
 
     Replica il filtro 'ultimi N minuti' della modalità still (find -mmin).
+    Se `only_ext` è passato (es. '.jpg'), copia solo i file con quell'estensione.
     Ritorna la lista dei percorsi relativi copiati.
     """
     if not os.path.isdir(src):
         raise FileNotFoundError(f"Sorgente inesistente: {src}")
     os.makedirs(dest, exist_ok=True)
     cutoff = time.time() - minutes * 60
+    ext_low = only_ext.lower() if only_ext else None
     copied: List[str] = []
     for dirpath, _dirs, files in os.walk(src):
         for name in files:
+            if ext_low and not name.lower().endswith(ext_low):
+                continue
             full = os.path.join(dirpath, name)
             try:
                 if os.path.getmtime(full) < cutoff:
