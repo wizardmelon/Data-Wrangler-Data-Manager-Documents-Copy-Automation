@@ -1,0 +1,20 @@
+# Configurazione reale del progetto (contiene dati non pubblici)
+config.yaml
+
+# Log e report generati
+*.log
+SCRIPT LOGS/
+*_report.html
+*_report.pdf
+*.mhl
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# macOS
+.DS_Store
