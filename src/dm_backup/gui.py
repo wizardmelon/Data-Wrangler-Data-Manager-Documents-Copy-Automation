@@ -54,6 +54,11 @@ def ask_text(prompt: str, default: str = "") -> str:
     return _osascript(script)
 
 
+def run_applescript(script: str) -> str:
+    """Esegue AppleScript già composto (usato per la bozza email in Mail.app)."""
+    return _osascript(script)
+
+
 def display_alert(message: str, title: str = "dm-backup") -> None:
     script = (
         f'display alert "{_escape(title)}" message "{_escape(message)}" '

@@ -88,6 +88,21 @@ project_folders:
   - "DAILY_FILES"
   - "LOGS"
 
+# --- Email di fine giornata (bozza in Mail.app, NON inviata da sola) ---
+# A fine "files" prepara una mail già pronta con i report allegati: la controlli
+# e premi Invia tu. Segnaposto usabili in oggetto/testo:
+#   {DAY} -> DAY023_20260525     {DATA} -> 20260525     {FILM} -> nome del film
+email:
+  invia_email: "n"                 # y = prepara la bozza, n = nessuna email
+  mailinglist: "produzione@example.com, montaggio@example.com"
+  oggetto: "Report di giornata {DAY}"
+  testo: |
+    Salve,
+    invio i report della giornata di oggi, {DAY}.
+    Ciao.
+  allega_report_giornata: "y"      # i report di Silverstack (03_REPORTS)
+  allega_report_pdf: "y"           # il report riepilogativo di dm-backup
+
 # --- Rinomina still per DaVinci Resolve ---
 # Scrivi in parole semplici cosa vuoi nel nome: l'eseguibile costruisce il
 # pattern %{...} da incollare in Resolve. Il token col DAY va in coda da solo.

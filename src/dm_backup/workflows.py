@@ -28,7 +28,7 @@ import re
 import shutil
 from typing import List, Optional
 
-from . import copyops, diskutils, gui, report, scaffold
+from . import copyops, diskutils, gui, mailer, report, scaffold
 from .config import ProjectConfig, shoot_date
 from .daylog import DayLogger
 
@@ -220,8 +220,9 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
         log.end()
         raise SystemExit(2)
 
-    # 6) Report giornaliero (HTML + PDF)
-    _try_report(log)
+    # 6) Report giornaliero (HTML + PDF) e bozza email con i report allegati
+    out = _try_report(log)
+    _try_email(config, log, day_name, reports_dir, (out or {}).get("pdf"))
     log.end()
 
 
@@ -290,9 +291,39 @@ def _fail(log: DayLogger, message: str) -> None:
     raise SystemExit(1)
 
 
-def _try_report(log: DayLogger) -> None:
+def _try_report(log: DayLogger) -> Optional[dict]:
     try:
         out = report.generate(log.log_file)
         log.write(f"Report generato: {out['html']}" + (f" / {out['pdf']}" if out["pdf"] else ""))
+        return out
     except Exception as exc:  # pragma: no cover - il report non deve bloccare
         log.write(f"ATTENZIONE: report non generato: {exc}")
+        return None
+
+
+def _try_email(config: ProjectConfig, log: DayLogger, day_name: str,
+               reports_dir: str, report_pdf: Optional[str]) -> None:
+    """Prepara la bozza email in Mail.app. Non deve mai bloccare il backup."""
+    if not config.email.enabled:
+        return
+    if not config.email.recipients:
+        log.write("ATTENZIONE: email attiva ma nessun destinatario in mailinglist.")
+        return
+    try:
+        attachments = mailer.collect_attachments(
+            reports_dir, report_pdf,
+            config.email.attach_day_reports, config.email.attach_report_pdf,
+        )
+        script = mailer.build_applescript(
+            config.email.recipients,
+            mailer.render_text(config.email.subject, config.film, day_name),
+            mailer.render_text(config.email.body, config.film, day_name),
+            attachments,
+        )
+        gui.run_applescript(script)
+        log.write(
+            f"Bozza email preparata per {len(config.email.recipients)} destinatari "
+            f"con {len(attachments)} allegati (da rivedere e inviare a mano)."
+        )
+    except Exception as exc:
+        log.write(f"ATTENZIONE: bozza email non creata: {exc}")

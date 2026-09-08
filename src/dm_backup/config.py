@@ -40,6 +40,35 @@ class StillRename:
 
 
 @dataclass
+class EmailConfig:
+    """Bozza email di fine giornata con i report della giornata allegati."""
+
+    enabled: bool = False
+    recipients: List[str] = field(default_factory=list)
+    subject: str = "Report di giornata {DAY}"
+    body: str = ""
+    attach_day_reports: bool = True
+    attach_report_pdf: bool = True
+
+
+def parse_recipients(value) -> List[str]:
+    """Indirizzi da stringa separata da virgole (o da lista YAML)."""
+    if not value:
+        return []
+    items = value if isinstance(value, list) else str(value).split(",")
+    return [str(a).strip() for a in items if str(a).strip()]
+
+
+def parse_flag(value, default: bool = False) -> bool:
+    """Interpreta y/n (e si/no, true/false, 1/0) come booleano."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"y", "yes", "s", "si", "sì", "true", "1"}
+
+
+@dataclass
 class ProjectConfig:
     """Configurazione completa di un progetto."""
 
@@ -95,6 +124,9 @@ class ProjectConfig:
     # --- Rinomina still ---
     still_rename: StillRename = field(default_factory=StillRename)
 
+    # --- Email di fine giornata ---
+    email: EmailConfig = field(default_factory=EmailConfig)
+
     # ------------------------------------------------------------------
     @property
     def log_dir(self) -> str:
@@ -135,6 +167,16 @@ class ProjectConfig:
             day_token=str(sr_data.get("day_token", "timeline")),
         )
 
+        em_data = data.get("email", {}) or {}
+        email = EmailConfig(
+            enabled=parse_flag(em_data.get("invia_email"), False),
+            recipients=parse_recipients(em_data.get("mailinglist")),
+            subject=str(em_data.get("oggetto", "Report di giornata {DAY}")),
+            body=str(em_data.get("testo", "")),
+            attach_day_reports=parse_flag(em_data.get("allega_report_giornata"), True),
+            attach_report_pdf=parse_flag(em_data.get("allega_report_pdf"), True),
+        )
+
         cfg = cls(
             film=str(project["film"]),
             prod=str(project.get("prod", "")),
@@ -165,6 +207,7 @@ class ProjectConfig:
             cleanup_spola_folder=bool(cleanup.get("spola_folder", True)),
             project_folders=list(data.get("project_folders", []) or []),
             still_rename=still_rename,
+            email=email,
         )
         cfg.validate()
         return cfg

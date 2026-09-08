@@ -98,7 +98,7 @@ def render_pdf(data: ReportData, pdf_path: str) -> Optional[str]:
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
         from reportlab.platypus import (
             SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
@@ -107,25 +107,42 @@ def render_pdf(data: ReportData, pdf_path: str) -> Optional[str]:
         return None
 
     styles = getSampleStyleSheet()
+    left = right = 15 * mm
     doc = SimpleDocTemplate(pdf_path, pagesize=A4,
-                            topMargin=20 * mm, bottomMargin=20 * mm)
+                            topMargin=20 * mm, bottomMargin=20 * mm,
+                            leftMargin=left, rightMargin=right)
+
+    # wordWrap="CJK" manda a capo anche a metà parola: i messaggi contengono
+    # percorsi lunghi senza spazi, che altrimenti sborderebbero dalla cella.
+    cell = ParagraphStyle("cell", parent=styles["BodyText"], fontSize=8,
+                          leading=10, spaceBefore=0, spaceAfter=0, wordWrap="CJK")
+    cell_head = ParagraphStyle("cell_head", parent=cell, fontName="Helvetica-Bold")
+
     flow = [Paragraph(html.escape(data.title), styles["Title"])]
     for line in data.header[1:]:
         if line.strip():
             flow.append(Paragraph(html.escape(line), styles["Normal"]))
     flow.append(Spacer(1, 8 * mm))
 
-    table_data = [["Orario", "Fase", "Messaggio"]]
+    def cells(values, style):
+        return [Paragraph(html.escape(v), style) for v in values]
+
+    table_data = [cells(["Orario", "Fase", "Messaggio"], cell_head)]
     for e in data.entries:
-        table_data.append([e.timestamp, e.what, e.message])
-    table = Table(table_data, colWidths=[38 * mm, 22 * mm, 110 * mm], repeatRows=1)
+        table_data.append(cells([e.timestamp, e.what, e.message], cell))
+
+    # Le colonne devono stare dentro l'area stampabile (A4 meno i margini).
+    usable = A4[0] - left - right
+    table = Table(table_data, colWidths=[34 * mm, 22 * mm, usable - 56 * mm],
+                  repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#dddddd")),
         ("TOPPADDING", (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     flow.append(table)
     doc.build(flow)
