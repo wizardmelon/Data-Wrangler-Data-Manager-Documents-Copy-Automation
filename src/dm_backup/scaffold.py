@@ -19,9 +19,17 @@ from . import still
 if TYPE_CHECKING:  # pragma: no cover
     from .config import ProjectConfig
 
-# Report path per Silverstack: stringa LETTERALE. $projectName$ è definito da
-# Silverstack stesso, quindi non viene sostituito da noi.
-SILVERSTACK_REPORT_PATH = "objectName$/REPORTS/$projectName$ $reportType$_$objectName$"
+def build_silverstack_report_path(reports_subfolder: str) -> str:
+    """Stringa-token del report path da incollare in Silverstack.
+
+    $objectName$, $projectName$, $reportType$ sono token di Silverstack stesso
+    (non sostituiti da noi): $objectName$ è il nome del bin (= nome del DAY).
+    Il nome della sottocartella dei report DEVE combaciare con quello che il
+    resto del progetto si aspetta (`structure.reports_subfolder` /
+    `spola.reports_subfolder` nello YAML) — altrimenti Silverstack scrive i
+    report in una cartella che `dm-backup files` non trova.
+    """
+    return f"$objectName$/{reports_subfolder}/$projectName$ $reportType$_$objectName$"
 
 
 def create_project_structure(config: "ProjectConfig", base: str) -> List[str]:
@@ -44,12 +52,13 @@ def write_reference_files(config: "ProjectConfig", base: str) -> List[str]:
     written: List[str] = []
 
     ss_path = os.path.join(base, "SILVERSTACK_report_path.txt")
+    report_path = build_silverstack_report_path(config.spola_reports_subfolder)
     with open(ss_path, "w", encoding="utf-8") as fh:
         fh.write(
             "Report path da incollare in Silverstack "
-            "($projectName$ lo compila Silverstack):\n\n"
+            "($projectName$ e $reportType$ li compila Silverstack):\n\n"
         )
-        fh.write(SILVERSTACK_REPORT_PATH + "\n")
+        fh.write(report_path + "\n")
     written.append(ss_path)
 
     pattern = still.build_resolve_pattern(config.still_rename)

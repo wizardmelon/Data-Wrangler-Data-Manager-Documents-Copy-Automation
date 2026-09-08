@@ -33,3 +33,27 @@ def test_find_spola_disks(tmp_path):
 
 def test_has_enough_space(tmp_path):
     assert diskutils.has_enough_space(str(tmp_path), 10) is True
+
+
+def test_resolve_fixed_disk_exact_match(tmp_path):
+    volumes = tmp_path / "Volumes"
+    (volumes / "TQCC_MASTER01").mkdir(parents=True)
+    assert workflows.resolve_fixed_disk("TQCC_MASTER01", str(volumes)) == "TQCC_MASTER01"
+
+
+def test_resolve_fixed_disk_prefix_match(tmp_path):
+    # Il nome del disco WORK cambia ogni giorno (TQCC_Work01, TQCC_Work02, ...):
+    # il config usa un prefisso, risolto per contenuto come la spola.
+    volumes = tmp_path / "Volumes"
+    (volumes / "TQCC_Work02").mkdir(parents=True)
+    assert workflows.resolve_fixed_disk("TQCC_Work", str(volumes)) == "TQCC_Work02"
+
+
+def test_resolve_fixed_disk_not_mounted(tmp_path):
+    volumes = tmp_path / "Volumes"
+    volumes.mkdir()
+    try:
+        workflows.resolve_fixed_disk("TQCC_MASTER01", str(volumes))
+        assert False, "doveva sollevare RuntimeError"
+    except RuntimeError:
+        pass

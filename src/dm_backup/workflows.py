@@ -108,6 +108,23 @@ def resolve_spola(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_R
     return gui.choose_from_list(disks, "Più spole montate. Quale usare?")
 
 
+def resolve_fixed_disk(name: str, volumes_root: str = diskutils.VOLUMES_ROOT) -> str:
+    """Risolve il nome reale di un disco fisso montato.
+
+    Match esatto se possibile; altrimenti per prefisso/contenuto (come la
+    spola), per tollerare nomi con suffisso variabile giorno per giorno
+    (es. "TQCC_Work01", "TQCC_Work02", ... configurato come "TQCC_Work0").
+    """
+    if diskutils.disk_mounted(name, volumes_root):
+        return name
+    matches = diskutils.find_spola_disks(name, volumes_root)
+    if not matches:
+        raise RuntimeError(f"Disco non montato: {name}")
+    if len(matches) == 1:
+        return matches[0]
+    return gui.choose_from_list(matches, f"Più dischi trovati per '{name}'. Quale usare?")
+
+
 # ----------------------------------------------------------------------
 # Comando FILES
 # ----------------------------------------------------------------------
@@ -157,15 +174,20 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     needed = diskutils.dir_size_bytes(master)
     all_verified = True
     for disk in destinations:
-        if not diskutils.disk_mounted(disk, volumes_root):
-            _fail(log, f"Disco non montato: {disk}")
-        disk_root = diskutils.disk_path(disk, volumes_root)
+        try:
+            resolved_disk = resolve_fixed_disk(disk, volumes_root)
+        except RuntimeError as exc:
+            _fail(log, str(exc))
+        if resolved_disk != disk:
+            log.write(f"Disco '{disk}' risolto come '{resolved_disk}' (match per prefisso)")
+
+        disk_root = diskutils.disk_path(resolved_disk, volumes_root)
         disk_day = find_day_folder_on_disk(disk_root, day_num)
         if not disk_day:
-            _fail(log, f"La cartella DAY{day_num} non esiste su {disk}. "
+            _fail(log, f"La cartella DAY{day_num} non esiste su {resolved_disk}. "
                        "Disco sbagliato o dailies video/audio non ancora scaricati.")
         if config.check_space and not diskutils.has_enough_space(disk_day, needed):
-            _fail(log, f"Spazio insufficiente su {disk} per {needed} byte.")
+            _fail(log, f"Spazio insufficiente su {resolved_disk} per {needed} byte.")
 
         copyops.copy_into(master, disk_day)
         if config.write_mhl:
@@ -173,13 +195,13 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
         if config.verify_checksum:
             result = copyops.verify_copy(master, disk_day)
             if result.ok:
-                log.write(f"Verifica OK su {disk}: {result.checked} file")
+                log.write(f"Verifica OK su {resolved_disk}: {result.checked} file")
             else:
                 all_verified = False
-                log.write(f"VERIFICA FALLITA su {disk}: "
+                log.write(f"VERIFICA FALLITA su {resolved_disk}: "
                           f"mancanti={len(result.missing)} diversi={len(result.mismatched)}")
         else:
-            log.write(f"Copia completata su {disk} (verifica disattivata)")
+            log.write(f"Copia completata su {resolved_disk} (verifica disattivata)")
 
     # 5) Pulizia: solo se tutte le verifiche sono passate
     if all_verified:
