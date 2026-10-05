@@ -29,6 +29,34 @@ def shoot_date(offset_hours: int) -> str:
     return (_dt.datetime.now() - _dt.timedelta(hours=offset_hours)).strftime("%Y%m%d")
 
 
+# Nomi con cui l'app Google Drive può chiamare la radice del drive in CloudStorage.
+# Cambia con la lingua dell'app o dopo un aggiornamento/riavvio.
+DRIVE_ROOT_NAMES = ("My Drive", "Il mio Drive")
+
+
+def resolve_drive_path(path: str) -> str:
+    """Se `path` non esiste, riprova scambiando il nome della radice di Google Drive.
+
+    La cartella `My Drive` può diventare `Il mio Drive` (e viceversa): il percorso
+    nel config smette di funzionare e la scrittura fallisce con "Permission denied"
+    perché la radice del mount è in sola lettura. Se nessuna variante esiste,
+    ritorna `path` invariato.
+    """
+    if not path or os.path.exists(path):
+        return path
+    parts = path.split(os.sep)
+    for i, part in enumerate(parts):
+        if part in DRIVE_ROOT_NAMES:
+            for alt in DRIVE_ROOT_NAMES:
+                if alt == part:
+                    continue
+                candidate = os.sep.join(parts[:i] + [alt] + parts[i + 1:])
+                if os.path.exists(candidate):
+                    return candidate
+            break
+    return path
+
+
 @dataclass
 class StillRename:
     """Come costruire il pattern di rinomina still per DaVinci Resolve."""
@@ -188,8 +216,8 @@ class ProjectConfig:
             today_files=str(paths.get("today_files", "")),
             daily_files=str(paths.get("daily_files", "")),
             log_folder=str(paths.get("log_folder", "")),
-            drive_reports=str(paths.get("drive_reports", "")),
-            drive_stills=str(paths.get("drive_stills", "")),
+            drive_reports=resolve_drive_path(str(paths.get("drive_reports", ""))),
+            drive_stills=resolve_drive_path(str(paths.get("drive_stills", ""))),
             reports_subfolder=str(structure.get("reports_subfolder", "03_REPORTS")),
             still_source=str(structure.get("still_source", "05_STILL")),
             files_folders=list(structure.get("files_folders", []) or []),

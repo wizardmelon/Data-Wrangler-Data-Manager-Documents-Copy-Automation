@@ -76,3 +76,21 @@ def test_load_from_file(tmp_path):
 def test_load_missing_file():
     with pytest.raises(ConfigError):
         ProjectConfig.load("/does/not/exist.yaml")
+
+
+def test_resolve_drive_path_swaps_localized_root(tmp_path):
+    from dm_backup.config import resolve_drive_path
+    real = tmp_path / "GoogleDrive-x" / "Il mio Drive" / "TQCC" / "STILLS"
+    real.mkdir(parents=True)
+    stale = str(tmp_path / "GoogleDrive-x" / "My Drive" / "TQCC" / "STILLS")
+    assert resolve_drive_path(stale) == str(real)
+
+
+def test_resolve_drive_path_keeps_existing_and_unknown(tmp_path):
+    from dm_backup.config import resolve_drive_path
+    ok = tmp_path / "My Drive" / "TQCC"
+    ok.mkdir(parents=True)
+    assert resolve_drive_path(str(ok)) == str(ok)
+    missing = str(tmp_path / "Altro" / "TQCC")
+    assert resolve_drive_path(missing) == missing
+    assert resolve_drive_path("") == ""
