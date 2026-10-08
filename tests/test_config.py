@@ -94,3 +94,12 @@ def test_resolve_drive_path_keeps_existing_and_unknown(tmp_path):
     missing = str(tmp_path / "Altro" / "TQCC")
     assert resolve_drive_path(missing) == missing
     assert resolve_drive_path("") == ""
+
+
+def test_today_and_daily_default_to_project_root():
+    from dm_backup.config import ProjectConfig
+    cfg = ProjectConfig.from_dict({"project": {"film": "F"}, "paths": {"project_root": "/r"}})
+    assert cfg.today_files == "/r/TODAY_FILES" and cfg.daily_files == "/r/DAILY_FILES"
+    cfg = ProjectConfig.from_dict({"project": {"film": "F"},
+                                   "paths": {"project_root": "/r", "today_files": "/x/T"}})
+    assert cfg.today_files == "/x/T"

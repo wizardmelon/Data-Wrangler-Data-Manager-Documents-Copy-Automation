@@ -239,6 +239,13 @@ class ProjectConfig:
             still_rename=still_rename,
             email=email,
         )
+        # Se vuote, TODAY_FILES / DAILY_FILES stanno dentro la radice del film
+        # (come la cartella LOGS). Chi le ha già scritte non cambia.
+        if cfg.project_root:
+            if not cfg.today_files:
+                cfg.today_files = os.path.join(cfg.project_root, "TODAY_FILES")
+            if not cfg.daily_files:
+                cfg.daily_files = os.path.join(cfg.project_root, "DAILY_FILES")
         cfg.validate()
         return cfg
 

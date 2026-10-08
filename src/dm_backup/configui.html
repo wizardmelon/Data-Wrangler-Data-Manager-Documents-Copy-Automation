@@ -89,7 +89,7 @@ function render(){
     <div class="grid">${text("project.film","Film (obbligatorio)")}${text("project.prod","Produzione")}${text("project.regia","Regia")}${text("project.dop","Direttore della fotografia")}${text("project.dit","DIT")}${text("project.dmanager","Data Manager")}</div></section>
 
   <section><h2>Cartelle di lavoro</h2><p class="hint">Dove vivono i file del film su questo computer.</p>
-    <div class="grid">${pathField("paths.project_root","Radice del film")}${pathField("paths.today_files","TODAY_FILES (lavoro del giorno)")}${pathField("paths.daily_files","DAILY_FILES (DAY master / Silverstack)")}${pathField("paths.log_folder","Cartella log (vuoto = &lt;radice&gt;/LOGS)")}${pathField("paths.drive_reports","Google Drive · report")}${pathField("paths.drive_stills","Google Drive · still")}</div></section>
+    <div class="grid">${pathField("paths.project_root","Radice del film")}${pathField("paths.today_files","TODAY_FILES (lavoro del giorno · vuoto = &lt;radice&gt;/TODAY_FILES)")}${pathField("paths.daily_files","DAILY_FILES (DAY master / Silverstack · vuoto = &lt;radice&gt;/DAILY_FILES)")}${pathField("paths.log_folder","Cartella log (vuoto = &lt;radice&gt;/LOGS)")}${pathField("paths.drive_reports","Google Drive · report")}${pathField("paths.drive_stills","Google Drive · still")}</div></section>
 
   <section><h2>Cartelle copiate dal backup file</h2><p class="hint">Sottocartelle di TODAY_FILES che il comando <b>files</b> copia nel DAY master.</p>
     <div class="grid">${text("structure.still_source","Cartella sorgente delle still")}${text("structure.reports_subfolder","Sottocartella report nel DAY")}</div><br>
@@ -173,6 +173,7 @@ async function load(){
   document.getElementById("dirty").textContent="";document.getElementById("cfgpath").textContent=c.path;render();
 }
 load();
+setInterval(()=>{api("/api/ping",{}).catch(()=>{})},10000);
 </script>
 </body>
 </html>

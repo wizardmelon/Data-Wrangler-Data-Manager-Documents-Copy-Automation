@@ -20,6 +20,7 @@ import secrets
 import shutil
 import subprocess
 import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
@@ -56,6 +57,8 @@ DEFAULTS: Dict[str, Any] = {
               "testo": "", "allega_report_giornata": "y", "allega_report_pdf": "y"},
     "still_rename": {"prefix": "", "fields": [], "separator": "_", "day_token": "timeline"},
 }
+
+IDLE_TIMEOUT = 180  # secondi senza ping dalla pagina prima di spegnersi
 
 PATH_KEYS = ("project_root", "today_files", "daily_files", "log_folder",
              "drive_reports", "drive_stills")
@@ -166,7 +169,8 @@ def preview_pattern(sr: Dict[str, Any]) -> Dict[str, str]:
 # ----------------------------------------------------------------------
 # Server
 # ----------------------------------------------------------------------
-def make_handler(config_path: str, token: str, shutdown):
+def make_handler(config_path: str, token: str, shutdown, state: Optional[Dict[str, float]] = None):
+    state = state if state is not None else {}
     class Handler(BaseHTTPRequestHandler):
         server_version = "dm-backup-config"
 
@@ -227,6 +231,9 @@ def make_handler(config_path: str, token: str, shutdown):
                 return self._json({"path": browse_folder(str(payload.get("prompt", "Scegli una cartella")))})
             if path == "/api/preview":
                 return self._json(preview_pattern(payload))
+            if path == "/api/ping":
+                state["last_ping"] = time.time()
+                return self._json({"ok": True})
             if path == "/api/quit":
                 self._json({"ok": True})
                 threading.Thread(target=shutdown, daemon=True).start()
@@ -243,12 +250,24 @@ def run_config_ui(config_path: str, open_browser: bool = True) -> None:
     def shutdown():
         server_holder["s"].shutdown()
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(config_path, token, shutdown))
+    state: Dict[str, float] = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(config_path, token, shutdown, state))
     server_holder["s"] = server
     url = f"http://127.0.0.1:{server.server_address[1]}/"
     print(f"Editor configurazione: {url}\nFile: {config_path}\n(Ctrl+C o 'Chiudi' nella pagina per uscire)", flush=True)
     if open_browser:
         webbrowser.open(url)
+    def watchdog():
+        # Se la pagina viene chiusa senza premere "Chiudi", il server si spegne da solo.
+        started = time.time()
+        while True:
+            time.sleep(5)
+            last = state.get("last_ping", started)
+            if time.time() - last > IDLE_TIMEOUT:
+                shutdown()
+                return
+
+    threading.Thread(target=watchdog, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
