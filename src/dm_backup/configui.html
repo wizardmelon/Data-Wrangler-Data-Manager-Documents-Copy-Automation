@@ -75,10 +75,15 @@ function pathField(p,label,hint){
 function check(p,label,hint,yn){
   const v=get(p); const on=yn?String(v).toLowerCase().startsWith("y")||v===true:!!v;
   return `<label class="check"><input type="checkbox" data-p="${p}" ${yn?'data-yn="1"':""} ${on?"checked":""}><span>${label}${hint?`<small>${hint}</small>`:""}</span></label>`;}
-function listField(p,label,hint,extra=""){
+function matches(name){const n=String(name||"").toLowerCase();if(!n)return[];return volumes.filter(v=>v.toLowerCase().includes(n));}
+function matchNote(name){
+  if(!name)return"";const m=matches(name);
+  if(!m.length)return `<small style="color:var(--warn)">⚠ nessun volume montato corrisponde</small>`;
+  return `<small style="color:var(--ok)">→ ${m.map(esc).join(", ")}${m.length>1?" (te ne chiederà uno)":""}</small>`;}
+function listField(p,label,hint,extra="",notes=false){
   const arr=get(p)||[];
   return `<div data-list="${p}"><span class="t" style="font-size:13px;color:var(--mute)">${label}</span>${hint?`<p class="hint" style="margin:2px 0 6px">${hint}</p>`:""}
-  <div class="list">${arr.map((v,i)=>`<div class="item"><input type="text" data-li="${p}" data-i="${i}" value="${esc(v)}"><button type="button" data-del="${p}" data-i="${i}" title="Rimuovi">✕</button></div>`).join("")}</div>
+  <div class="list">${arr.map((v,i)=>`<div class="item"><input type="text" data-li="${p}" data-i="${i}" value="${esc(v)}"><button type="button" data-del="${p}" data-i="${i}" title="Rimuovi">✕</button></div>${notes?`<div class="note" data-note="${i}" style="margin:-2px 0 4px 4px">${matchNote(v)}</div>`:""}`).join("")}</div>
   <button type="button" data-add="${p}">+ Aggiungi</button> ${extra}</div>`;}
 
 function render(){
@@ -95,9 +100,9 @@ function render(){
     <div class="grid">${text("structure.still_source","Cartella sorgente delle still")}${text("structure.reports_subfolder","Sottocartella report nel DAY")}</div><br>
     ${listField("structure.files_folders","Cartelle da copiare","")}</section>
 
-  <section><h2>Dischi e spola</h2><p class="hint">Volumi montati in /Volumes. Il nome può essere un prefisso (es. <code>TQCC_Work0</code> trova <code>TQCC_Work01</code>).</p>
-    <div class="grid">${text("spola.prefix","Prefisso della spola (es. TQCC_TRAVELER)")}${text("spola.reports_subfolder","Sottocartella report della spola")}</div><br>
-    ${listField("disks.fixed_disks","Dischi fissi di destinazione","",`<span style="color:var(--mute);font-size:13px">oppure aggiungi un volume montato:</span><div class="chips">${volumes.map(v=>`<span class="chip ${fixed.includes(v)?"on":""}" data-vol="${esc(v)}">${esc(v)}</span>`).join("")||"<i style='color:var(--mute)'>nessun volume trovato</i>"}</div>`)}
+  <section><h2>Dischi e spola</h2><p class="hint">Basta scrivere <b>una parte del nome</b>: <code>TQCC_Work</code> trova <code>TQCC_Work01</code>, <code>TQCC_Work02</code>… (maiuscole/minuscole non contano). Sotto ogni voce vedi quali volumi montati corrispondono ora. Se ne corrispondono più d'uno, il programma ti chiede quale usare.</p>
+    <div class="grid">${text("spola.prefix","Parte del nome della spola (es. TQCC_TRAVELER)")}<div style="align-self:end;padding-bottom:8px" id="spolanote">${matchNote(get("spola.prefix"))}</div>${text("spola.reports_subfolder","Sottocartella report della spola")}</div><br>
+    ${listField("disks.fixed_disks","Dischi fissi di destinazione","",`<span style="color:var(--mute);font-size:13px">oppure aggiungi un volume montato (nome completo: se cambia numero, accorcialo a mano):</span><div class="chips">${volumes.map(v=>`<span class="chip ${fixed.includes(v)?"on":""}" data-vol="${esc(v)}">${esc(v)}</span>`).join("")||"<i style='color:var(--mute)'>nessun volume trovato</i>"}</div>`,true)}
     ${check("disks.include_spola","Copia anche sulla spola","La spola rilevata riceve il DAY master come ultimo disco.")}</section>
 
   <section><h2>Still</h2><p class="hint">Come il comando <b>still</b> sceglie le immagini da copiare.</p>
@@ -139,7 +144,9 @@ let pt;function updatePattern(){clearTimeout(pt);pt=setTimeout(async()=>{
 document.addEventListener("input",e=>{
   const t=e.target;
   if(t.dataset.p&&t.type!=="checkbox"){let v=t.value;if(t.dataset.num)v=v===""?"":Number(v);set(t.dataset.p,v);if(t.dataset.p.startsWith("still_rename"))updatePattern();}
-  if(t.dataset.li){get(t.dataset.li)[+t.dataset.i]=t.value;markDirty();}
+  if(t.dataset.li){get(t.dataset.li)[+t.dataset.i]=t.value;markDirty();
+    const n=document.querySelector(`[data-note="${t.dataset.i}"]`);if(n&&t.dataset.li==="disks.fixed_disks")n.innerHTML=matchNote(t.value);}
+  if(t.dataset.p==="spola.prefix")document.getElementById("spolanote").innerHTML=matchNote(t.value);
 });
 document.addEventListener("change",e=>{
   const t=e.target;

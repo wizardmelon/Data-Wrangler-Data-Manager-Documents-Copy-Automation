@@ -132,10 +132,12 @@ stesse regole dei comandi e **copia il file esistente in `.backups/`** (con data
 sconosciute vengono conservate; i commenti del vecchio file no (per quelli vedi `config.example.yaml`).
 Il file si può comunque modificare a mano.
 
-**Senza Terminale:** `tools/make-config-app.sh` crea `~/Applications/Configura dm-backup.app`: doppio
-clic (o trascinala nel Dock) e l'editor si apre nel browser. In alternativa, un pulsante Stream
-Deck con argomenti `--config <config.yaml> config`. Se chiudi la scheda senza premere *Chiudi*, il
-server si spegne da solo dopo circa 3 minuti.
+**Senza Terminale:** fai doppio clic su **`Configura dm-backup.command`** (nella cartella del progetto).
+Funziona da qualsiasi posizione, anche appena scaricato da GitHub; alla prima esecuzione prepara da
+solo le librerie (serve internet) e, se manca `config.yaml`, parte da una configurazione vuota.
+Solo la prima volta macOS può bloccare il file perché scaricato: tasto destro → *Apri* → *Apri*.
+La finestra del Terminale che compare serve solo da indicatore: non c'è nulla da scrivere.
+Se chiudi la scheda senza premere *Chiudi*, il server si spegne da solo dopo circa 3 minuti.
 
 Se `today_files` / `daily_files` sono vuoti valgono `<project_root>/TODAY_FILES` e
 `<project_root>/DAILY_FILES`.

@@ -23,5 +23,3 @@ venv/
 # Backup locali di config/file toccati
 .backups/
 
-# App di avvio generata da tools/make-config-app.sh
-*.app/
