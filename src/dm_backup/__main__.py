@@ -37,11 +37,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", help="Percorso a config.yaml")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("files", help="Copia i documenti del giorno nei dischi di backup")
+    p_files = sub.add_parser("files", help="Copia i documenti del giorno nei dischi di backup")
+    p_files.add_argument(
+        "--day-offset", type=int, metavar="ORE",
+        help="Ore da sottrarre all'orario per la data del DAY (riprese notturne). Default: config",
+    )
     p_still = sub.add_parser("still", help="Copia le still sul drive (autodetect DAY)")
     p_still.add_argument(
         "--drx", action="store_true",
         help="Copia tutte le still che hanno un .drx con lo stesso nome (niente prompt minuti)",
+    )
+    p_still.add_argument(
+        "--mode", choices=["minutes", "drx"],
+        help="Modalità di copia (default: still.mode del config)",
+    )
+    p_still.add_argument(
+        "--minutes", type=int, metavar="N",
+        help="Modalità minuti: copia le still degli ultimi N minuti senza chiedere",
     )
 
     sub.add_parser("config", help="Apre l'editor grafico (pagina HTML locale) di config.yaml")
@@ -78,9 +90,13 @@ def main(argv: Optional[list] = None) -> int:
         config = _load_config(args.config)
 
         if args.command == "files":
+            if args.day_offset is not None:
+                config.day_hour_offset = args.day_offset
             workflows.run_files_mode(config)
         elif args.command == "still":
-            workflows.run_still_mode(config, drx_mode=True if args.drx else None)
+            drx_mode = True if (args.drx or args.mode == "drx") else (
+                False if args.mode == "minutes" else None)
+            workflows.run_still_mode(config, drx_mode=drx_mode, minutes=args.minutes)
         elif args.command == "init":
             base = args.base or config.project_root or config.daily_files
             out = workflows.run_init(config, base)

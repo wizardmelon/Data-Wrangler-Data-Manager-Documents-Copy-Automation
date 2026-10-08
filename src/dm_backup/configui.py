@@ -60,6 +60,16 @@ DEFAULTS: Dict[str, Any] = {
 
 IDLE_TIMEOUT = 180  # secondi senza ping dalla pagina prima di spegnersi
 
+# Punto di partenza per un film nuovo (nessun config.yaml): struttura come config.example.yaml.
+NEW_FILM_DEFAULTS: Dict[str, Any] = {
+    "structure": {"reports_subfolder": "03_REPORTS", "still_source": "05_STILL",
+                  "files_folders": ["04_DRP", "06_STILL_LAB", "05_STILL"]},
+    "project_folders": ["TODAY_FILES/04_DRP", "TODAY_FILES/05_STILL", "TODAY_FILES/06_STILL_LAB",
+                        "DAILY_FILES", "LOGS"],
+    "still_rename": {"prefix": "SC", "fields": ["scena", "clip"], "separator": "_",
+                     "day_token": "timeline"},
+}
+
 PATH_KEYS = ("project_root", "today_files", "daily_files", "log_folder",
              "drive_reports", "drive_stills")
 
@@ -77,7 +87,7 @@ def merge_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def load_raw(path: str) -> Dict[str, Any]:
     if not os.path.isfile(path):
-        return merge_defaults({})
+        return merge_defaults(copy.deepcopy(NEW_FILM_DEFAULTS))
     with open(path, "r", encoding="utf-8") as fh:
         return merge_defaults(yaml.safe_load(fh) or {})
 
@@ -135,6 +145,15 @@ def save_config(path: str, data: Dict[str, Any]) -> Dict[str, Any]:
         fh.write(text)
     os.replace(tmp, path)
     return {"backup": backup, "warnings": collect_warnings(data)}
+
+
+def create_structure(config_path: str) -> Dict[str, Any]:
+    """Crea la struttura del film (come `dm-backup init`) dal config già salvato."""
+    from . import workflows
+    config = ProjectConfig.load(config_path)
+    base = config.project_root or config.daily_files
+    out = workflows.run_init(config, base)
+    return {"base": out["base"], "folders": len(out["folders"]), "references": out["references"]}
 
 
 def list_volumes(volumes_root: str = diskutils.VOLUMES_ROOT) -> List[str]:
@@ -208,6 +227,7 @@ def make_handler(config_path: str, token: str, shutdown, state: Optional[Dict[st
                 return self._json({"error": "non autorizzato"}, 403)
             if path == "/api/config":
                 return self._json({"config": load_raw(config_path), "path": config_path,
+                                   "exists": os.path.isfile(config_path),
                                    "aliases": sorted(still.ALIAS_TO_TOKEN)})
             if path == "/api/volumes":
                 return self._json({"volumes": list_volumes()})
@@ -229,6 +249,11 @@ def make_handler(config_path: str, token: str, shutdown, state: Optional[Dict[st
                     return self._json({"ok": False, "error": str(exc)}, 400)
             if path == "/api/browse":
                 return self._json({"path": browse_folder(str(payload.get("prompt", "Scegli una cartella")))})
+            if path == "/api/init":
+                try:
+                    return self._json({"ok": True, **create_structure(config_path)})
+                except (ConfigError, OSError) as exc:
+                    return self._json({"ok": False, "error": str(exc)}, 400)
             if path == "/api/preview":
                 return self._json(preview_pattern(payload))
             if path == "/api/ping":

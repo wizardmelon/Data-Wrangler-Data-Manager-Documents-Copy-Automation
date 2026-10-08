@@ -1,0 +1,81 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "SDKVersion": 3,
+  "UUID": "com.wizardmelon.dm-backup",
+  "Name": "dm-backup",
+  "Version": "1.0.0.0",
+  "Author": "wizardmelon",
+  "Description": "Backup dei documenti di giornata e copia delle still per Data Manager / DIT, con editor di configurazione.",
+  "Icon": "imgs/plugin-icon",
+  "Category": "dm-backup",
+  "CategoryIcon": "imgs/category-icon",
+  "CodePath": "bin/plugin.js",
+  "Nodejs": {
+    "Version": "24"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13"
+    }
+  ],
+  "Software": {
+    "MinimumVersion": "7.1"
+  },
+  "Actions": [
+    {
+      "UUID": "com.wizardmelon.dm-backup.files",
+      "Name": "Backup file",
+      "Tooltip": "Copia i documenti del giorno su tutti i dischi, con verifica.",
+      "Icon": "imgs/actions/files/icon",
+      "PropertyInspectorPath": "ui/files.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/files/key",
+          "ShowTitle": true,
+          "TitleAlignment": "bottom",
+          "Title": "Backup\nfile"
+        }
+      ]
+    },
+    {
+      "UUID": "com.wizardmelon.dm-backup.still",
+      "Name": "Copia still",
+      "Tooltip": "Copia le still sul Drive (ultimi N minuti oppure quelle con .drx).",
+      "Icon": "imgs/actions/still/icon",
+      "PropertyInspectorPath": "ui/still.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/still/key",
+          "ShowTitle": true,
+          "TitleAlignment": "bottom",
+          "Title": "Copia\nstill"
+        }
+      ]
+    },
+    {
+      "UUID": "com.wizardmelon.dm-backup.config",
+      "Name": "Configurazione",
+      "Tooltip": "Apre l'editor grafico delle impostazioni (config.yaml).",
+      "Icon": "imgs/actions/config/icon",
+      "PropertyInspectorPath": "ui/config.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/actions/config/key",
+          "ShowTitle": true,
+          "TitleAlignment": "bottom",
+          "Title": "Config"
+        }
+      ]
+    }
+  ]
+}

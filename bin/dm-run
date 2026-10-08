@@ -1,0 +1,20 @@
+#!/bin/bash
+# Avvia dm-backup scegliendo da solo Python; alla prima esecuzione prepara le librerie.
+# Usato dal plugin Stream Deck (stessi argomenti di bin/dm-backup).
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+PY=python3
+if [ -x "$DIR/.venv/bin/python" ]; then
+  PY="$DIR/.venv/bin/python"
+elif ! python3 -c "import yaml, reportlab" >/dev/null 2>&1; then
+  if python3 -m venv "$DIR/.venv" \
+     && "$DIR/.venv/bin/pip" install -q --disable-pip-version-check -r "$DIR/requirements.txt"; then
+    PY="$DIR/.venv/bin/python"
+  else
+    rm -rf "$DIR/.venv"
+    osascript -e 'display alert "dm-backup" message "Installazione delle librerie non riuscita. Controlla la connessione internet e riprova (oppure apri Configura dm-backup.command)."' >/dev/null 2>&1
+    exit 1
+  fi
+fi
+exec "$PY" "$DIR/bin/dm-backup" "$@"

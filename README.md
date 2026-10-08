@@ -184,6 +184,28 @@ compila Silverstack, quindi resta letterale.
 
 ## Uso con Stream Deck
 
+### Plugin dm-backup (consigliato)
+
+1. Doppio clic su **`streamdeck-plugin/com.wizardmelon.dm-backup.streamDeckPlugin`** (Stream Deck lo installa).
+2. Trascina sui tasti le azioni della categoria **dm-backup**:
+   - **Backup file**: campo *Ore di scarto per le riprese notturne*. Vuoto = vale `day_hour_offset` del `config.yaml`.
+   - **Copia still**: *Modalità* (come da config / ultimi N minuti / con `.drx`) e *Minuti*. Vuoti = vale il
+     config; minuti vuoti = te li chiede a ogni copia.
+   - **Configurazione**: apre l'editor grafico (se è già aperto, riapre la pagina).
+3. In ogni tasto, sezione *Cartella dm-backup*: il plugin la cerca da solo; se non la trova, premi **Scegli…**.
+   Il `config.yaml` è quello dentro quella cartella.
+
+Il tasto mostra il segno di spunta a fine lavoro, o il triangolo di avviso se qualcosa è andato storto
+(dettagli nei log del plugin). Un secondo clic mentre l'azione è già in corso viene rifiutato, per evitare
+doppie copie. Alla prima esecuzione, se mancano le librerie Python, vengono installate in automatico
+(serve internet; un minuto circa).
+
+Per modificare il plugin: `cd streamdeck-plugin && npm install && npm run build` (serve Node.js 24), poi
+`npx streamdeck pack com.wizardmelon.dm-backup.sdPlugin --output . --force` per rigenerare il file
+`.streamDeckPlugin`. Chi usa solo il plugin non ha bisogno di Node.
+
+### In alternativa: azione Run Shell Command
+
 Si usa l'azione **Run Shell Command** del plugin **Mac Automation** (categoria *Mac Automation* nel
 pannello azioni di Stream Deck). Nel campo del comando incolla il percorso di `bin/dm-backup`, il
 percorso del tuo `config.yaml` e l'azione, **con gli apici singoli** attorno ai percorsi (servono se
@@ -196,10 +218,11 @@ contengono spazi, come nelle cartelle iCloud):
 '/percorso/dm-backup/bin/dm-backup' --config '/percorso/dm-backup/config.yaml' config
 ```
 
+Opzioni da riga di comando: `files --day-offset ORE`, `still --mode minutes|drx`, `still --minutes N`.
 Un tasto per azione: `files` (backup documenti), `still` (still a minuti), `still --drx` (still con
 .drx) e `config` (editor grafico).
 
-`init` si lancia da terminale a inizio film, non serve un pulsante Stream Deck.
+`init` (struttura del film) si lancia dall'editor grafico: pulsante **Crea la struttura del film**; resta disponibile anche da terminale.
 
 > **Importante:** la cartella `DAYxxx_yyyymmdd` deve **già esistere** sui dischi di
 > backup (è dove Silverstack ha scaricato i file video/audio della giornata). Il comando

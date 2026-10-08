@@ -53,7 +53,7 @@ button.primary{background:var(--acc);color:var(--accfg);border-color:var(--acc);
 
 <script>
 const TOKEN="__TOKEN__";
-let cfg=null, aliases=[], volumes=[], dirty=false;
+let cfg=null, aliases=[], volumes=[], dirty=false, exists=true;
 
 async function api(path,body){
   const opt={headers:{"X-Token":TOKEN}};
@@ -90,6 +90,9 @@ function render(){
   const m=document.getElementById("main");
   const fixed=get("disks.fixed_disks")||[];
   m.innerHTML=`
+  ${exists?"":`<section style="border-color:var(--acc)"><h2>Benvenuto: nuovo film</h2>
+    <p class="hint">Non c'è ancora un config.yaml. Passi: <b>1)</b> scrivi il nome del film e scegli la sua cartella qui sotto, <b>2)</b> controlla le sezioni successive (dischi, spola, Drive), <b>3)</b> premi <b>Salva</b>, <b>4)</b> in fondo premi <b>Crea la struttura del film</b>.</p>
+    <div class="grid">${text("project.film","1 · Nome del film")}${pathField("paths.project_root","1 · Cartella del film (verrà creata qui la struttura)")}</div></section>`}
   <section><h2>Film e crew</h2><p class="hint">Finiscono nell'intestazione del log giornaliero.</p>
     <div class="grid">${text("project.film","Film (obbligatorio)")}${text("project.prod","Produzione")}${text("project.regia","Regia")}${text("project.dop","Direttore della fotografia")}${text("project.dit","DIT")}${text("project.dmanager","Data Manager")}</div></section>
 
@@ -126,7 +129,9 @@ function render(){
     <p style="margin:12px 0 4px;font-size:13px;color:var(--mute)">Pattern da incollare in Resolve:</p><div class="pattern" id="pattern">…</div></section>
 
   <section><h2>Struttura creata da <code>init</code> a inizio film</h2><p class="hint">Percorsi relativi alla radice del film (anche annidati).</p>
-    ${listField("project_folders","Cartelle","")}</section>
+    ${listField("project_folders","Cartelle","")}
+    <br><button type="button" id="initbtn" class="primary">Crea la struttura del film</button>
+    <p class="hint" style="margin-top:6px">Crea le cartelle sopra dentro la radice del film e scrive i file di riferimento per Silverstack e Resolve. Salva prima le modifiche: lo faccio io automaticamente. Le cartelle già esistenti non vengono toccate.</p></section>
 
   <section><h2>Email di fine giornata</h2><p class="hint">Crea una bozza in Mail con i report allegati; non viene mai inviata da sola. Segnaposto: {DAY} {DATA} {FILM}</p>
     ${check("email.invia_email","Prepara la bozza email","",true)}
@@ -161,14 +166,24 @@ document.addEventListener("click",async e=>{
   else if(t.dataset.fld){const a=get("still_rename.fields")||[];const i=a.indexOf(t.dataset.fld);i>=0?a.splice(i,1):a.push(t.dataset.fld);set("still_rename.fields",a);render();}
   else if(t.dataset.browse){const r=await api("/api/browse",{prompt:"Scegli la cartella"});if(r.path){set(t.dataset.browse,r.path);render();}}
 });
-document.getElementById("save").onclick=async()=>{
+async function doSave(){
   // elimina voci vuote dalle liste prima di salvare
   for(const p of ["structure.files_folders","disks.fixed_disks","project_folders"])set(p,(get(p)||[]).map(s=>s.trim()).filter(Boolean));
   const r=await api("/api/save",cfg);
-  if(r.ok){dirty=false;document.getElementById("dirty").textContent="";render();
+  if(r.ok){dirty=false;exists=true;document.getElementById("dirty").textContent="";render();
     toast(`✓ Salvato.${r.backup?`<br><small>Backup precedente: ${esc(r.backup)}</small>`:""}${r.warnings.length?`<ul>${r.warnings.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}`,"ok");}
-  else toast("✗ Non salvato: "+esc(r.error),"err");
-};
+  else{toast("✗ Non salvato: "+esc(r.error),"err");}
+  return r.ok;
+}
+document.getElementById("save").onclick=()=>{doSave();};
+document.addEventListener("click",async e=>{
+  if(e.target.id!=="initbtn")return;
+  if(!cfg.project.film||!cfg.paths.project_root){toast("✗ Inserisci prima nome del film e cartella radice.","err");return;}
+  if(!confirm("Creo la struttura del film in:\n"+cfg.paths.project_root+" ?"))return;
+  if(!(await doSave()))return;
+  const r=await api("/api/init",{});
+  r.ok?toast(`✓ Struttura creata in ${esc(r.base)} (${r.folders} cartelle + file di riferimento).`,"ok"):toast("✗ "+esc(r.error),"err");
+});
 document.getElementById("reload").onclick=()=>{if(!dirty||confirm("Scartare le modifiche non salvate?"))load();};
 document.getElementById("quit").onclick=async()=>{if(dirty&&!confirm("Ci sono modifiche non salvate. Chiudere comunque?"))return;
   await api("/api/quit",{});document.body.innerHTML="<p style='padding:24px'>Editor chiuso. Puoi chiudere questa scheda.</p>";};
@@ -176,7 +191,7 @@ window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.return
 
 async function load(){
   const [c,v]=await Promise.all([api("/api/config"),api("/api/volumes")]);
-  cfg=c.config;aliases=c.aliases;volumes=v.volumes;dirty=false;
+  exists=c.exists;cfg=c.config;aliases=c.aliases;volumes=v.volumes;dirty=false;
   document.getElementById("dirty").textContent="";document.getElementById("cfgpath").textContent=c.path;render();
 }
 load();

@@ -253,8 +253,12 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
 # Comando STILL
 # ----------------------------------------------------------------------
 def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_ROOT,
-                   drx_mode: Optional[bool] = None) -> None:
-    """`drx_mode`: None = usa still.mode del config; True/False forza il modo."""
+                   drx_mode: Optional[bool] = None,
+                   minutes: Optional[int] = None) -> None:
+    """`drx_mode`: None = usa still.mode del config; True/False forza il modo.
+
+    `minutes`: se passato (modo minuti) salta il prompt e usa questo valore.
+    """
     if drx_mode is None:
         drx_mode = config.still_mode == "drx"
 
@@ -266,6 +270,10 @@ def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     log.write(f"Day trovato: {day_num}")
 
     src = config.still_source_path
+
+    if not config.drive_stills:
+        _fail(log, "paths.drive_stills non è impostato: scegli la cartella Drive delle still "
+                   "nell'editor di configurazione.")
 
     # Modo DRX: individua le still nuove PRIMA di eliminare i .drx.
     drx_stills: List[str] = []
@@ -282,12 +290,13 @@ def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     if drx_mode:
         copied = copyops.copy_files(src, dest, drx_stills)
     else:
-        # Prompt: ultimi N minuti.
-        minutes_raw = gui.ask_text("Inserisci MIN da export:", str(config.still_default_minutes))
-        try:
-            minutes = int(minutes_raw)
-        except ValueError:
-            minutes = config.still_default_minutes
+        if minutes is None:
+            # Prompt: ultimi N minuti.
+            minutes_raw = gui.ask_text("Inserisci MIN da export:", str(config.still_default_minutes))
+            try:
+                minutes = int(minutes_raw)
+            except ValueError:
+                minutes = config.still_default_minutes
         log.write(f"Selezionati {minutes} minuti di file da copiare.")
         copied = copyops.copy_recent_files(src, dest, minutes, only_ext=config.still_extension)
     log.write(f"Inizio copia di {len(copied)} still da {src} a {dest}")

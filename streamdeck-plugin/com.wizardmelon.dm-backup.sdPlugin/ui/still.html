@@ -1,0 +1,12 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>dm-backup</title><link rel="stylesheet" href="pi.css"></head><body>
+<div class="row"><label>Modalità di copia</label>
+<select data-s="mode"><option value="">Come da config.yaml</option><option value="minutes">Ultimi N minuti</option><option value="drx">Tutte le still con .drx omonimo</option></select>
+<div class="hint">Con .drx individua le still nuove (mai passate dal backup) e le copia tutte, senza chiedere nulla.</div></div>
+<div class="row" id="minutesRow"><label>Minuti da copiare</label>
+<input data-s="minutes" type="number" min="1" step="1" placeholder="vuoto = te lo chiede a ogni copia">
+<div class="hint">Valido solo nella modalità a minuti.</div></div>
+<div class="sep"></div>
+<div class="row"><label>Cartella dm-backup (con config.yaml)</label>
+<div class="folder"><input id="folder" type="text" readonly placeholder="cerco automaticamente…"><button id="choose">Scegli…</button></div>
+<div id="folderStatus" class="hint"></div></div>
+<script src="pi.js"></script></body></html>

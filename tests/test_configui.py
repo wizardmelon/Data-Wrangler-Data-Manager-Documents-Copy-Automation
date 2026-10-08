@@ -73,3 +73,18 @@ def test_server_requires_token(tmp_path):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_new_film_flow_save_then_init(tmp_path):
+    path = tmp_path / "config.yaml"
+    data = configui.load_raw(str(path))  # file assente -> default di film nuovo
+    assert data["structure"]["files_folders"] and data["project_folders"]
+    data["project"]["film"] = "Nuovo"
+    data["paths"]["project_root"] = str(tmp_path / "FILM")
+    configui.save_config(str(path), data)
+    out = configui.create_structure(str(path))
+    assert os.path.isdir(tmp_path / "FILM" / "TODAY_FILES" / "05_STILL")
+    assert os.path.isfile(tmp_path / "FILM" / "RESOLVE_still_pattern.txt")
+    cfg = ProjectConfig.load(str(path))
+    assert cfg.today_files == str(tmp_path / "FILM" / "TODAY_FILES")
+    assert out["folders"] == 5

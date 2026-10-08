@@ -1,0 +1,9 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>dm-backup</title><link rel="stylesheet" href="pi.css"></head><body>
+<div class="row"><label>Ore di scarto per le riprese notturne</label>
+<input data-s="offsetHours" type="number" min="0" max="23" step="1" placeholder="vuoto = valore del config.yaml">
+<div class="hint">Ore sottratte all'orario per decidere la data del DAY (es. 8: alle 02:00 vale ancora il giorno prima). Lascia vuoto per usare quello del config.</div></div>
+<div class="sep"></div>
+<div class="row"><label>Cartella dm-backup (con config.yaml)</label>
+<div class="folder"><input id="folder" type="text" readonly placeholder="cerco automaticamente…"><button id="choose">Scegli…</button></div>
+<div id="folderStatus" class="hint"></div></div>
+<script src="pi.js"></script></body></html>

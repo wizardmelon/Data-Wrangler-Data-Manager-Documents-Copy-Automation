@@ -23,3 +23,6 @@ venv/
 # Backup locali di config/file toccati
 .backups/
 
+
+# Plugin Stream Deck: dipendenze di sviluppo
+streamdeck-plugin/node_modules/
