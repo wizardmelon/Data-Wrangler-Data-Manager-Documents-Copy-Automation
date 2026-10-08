@@ -130,6 +130,19 @@ def resolve_fixed_disk(name: str, volumes_root: str = diskutils.VOLUMES_ROOT) ->
 # ----------------------------------------------------------------------
 # Comando FILES
 # ----------------------------------------------------------------------
+def format_files_notification(day_name: str, folder_counts: List[tuple],
+                              disk_results: List[tuple], verified: bool = True):
+    """Testo strutturato della notifica di fine backup: (titolo, sottotitolo, corpo)."""
+    n_disks = len(disk_results)
+    title = f"{day_name} · Backup completato"
+    subtitle = (f"{'Verificato' if verified else 'Copiato'} su "
+                f"{n_disks} {'volume' if n_disks == 1 else 'volumi'}")
+    lines = ["Cartelle: " + (", ".join(f"{f} ({n})" for f, n in folder_counts) or "nessuna")]
+    for volume, checked, ok in disk_results:
+        lines.append(f"{'✓' if ok else '✗'} {volume} ({checked} file)")
+    return title, subtitle, "\n".join(lines)
+
+
 def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_ROOT) -> None:
     log = DayLogger(config, "files")
     log.start()
@@ -160,13 +173,16 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
         log.write(f"{copyops.count_files(reports_dir)} report copiati su Drive: {drive_reports_dest}")
 
     # 3) Cartelle sorgente da TODAY_FILES -> DAY_master
+    folder_counts: List[tuple] = []
     for folder in config.files_folders:
         src = os.path.join(config.today_files, folder)
         if not os.path.isdir(src):
             log.write(f"ATTENZIONE: sorgente inesistente, saltata: {folder}")
             continue
         copyops.copy_into(src, os.path.join(master, folder))
-        log.write(f"{copyops.count_files(src)} file copiati da {folder} a {day_name}")
+        n_files = copyops.count_files(src)
+        folder_counts.append((folder, n_files))
+        log.write(f"{n_files} file copiati da {folder} a {day_name}")
 
     # 4) Destinazioni = dischi fissi (+ spola)
     destinations = list(config.fixed_disks)
@@ -175,6 +191,7 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
 
     needed = diskutils.dir_size_bytes(master)
     all_verified = True
+    disk_results: List[tuple] = []  # (volume, file verificati, ok)
     for disk in destinations:
         try:
             resolved_disk = resolve_fixed_disk(disk, volumes_root)
@@ -196,6 +213,7 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
             copyops.write_mhl(master, os.path.join(disk_day, f"{day_name}.mhl"))
         if config.verify_checksum:
             result = copyops.verify_copy(master, disk_day)
+            disk_results.append((resolved_disk, result.checked, result.ok))
             if result.ok:
                 log.write(f"Verifica OK su {resolved_disk}: {result.checked} file")
             else:
@@ -203,6 +221,7 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
                 log.write(f"VERIFICA FALLITA su {resolved_disk}: "
                           f"mancanti={len(result.missing)} diversi={len(result.mismatched)}")
         else:
+            disk_results.append((resolved_disk, copyops.count_files(master), True))
             log.write(f"Copia completata su {resolved_disk} (verifica disattivata)")
 
     # 5) Pulizia: solo se tutte le verifiche sono passate
@@ -216,7 +235,9 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
         if config.cleanup_spola_folder and os.path.isdir(spola_folder):
             shutil.rmtree(spola_folder)
             log.write(f"Cartella spola rimossa: {spola_folder}")
-        gui.display_notification("Backup documenti completato e verificato.")
+        title, subtitle, body = format_files_notification(
+            day_name, folder_counts, disk_results, config.verify_checksum)
+        gui.display_notification(body, title=title, subtitle=subtitle)
     else:
         gui.display_alert("Verifica integrità fallita: le cartelle TODAY NON sono state svuotate.")
         log.end()
