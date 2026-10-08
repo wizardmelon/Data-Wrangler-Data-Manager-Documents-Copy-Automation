@@ -24,7 +24,7 @@ Un unico eseguibile, `dm-backup`, con quattro sottocomandi:
 |---|---|---|
 | `dm-backup init` | **una volta, a inizio film** | Crea la struttura di cartelle del progetto (da YAML) sotto la radice del film e genera i file di riferimento per Silverstack e DaVinci Resolve. |
 | `dm-backup files` | ogni giorno | Consolida i documenti del giorno nel DAY master di `DAILY_FILES` e li copia **dentro la cartella DAY già esistente** su ogni disco (dischi fissi + spola), con verifica checksum, manifest MHL e report finale. |
-| `dm-backup still` / `dm-backup still --drx` | ogni giorno | Rileva il DAY, elimina i `.drx` dalla sorgente e copia sul Drive le still degli ultimi N minuti (chiesti a schermo). |
+| `dm-backup still` / `dm-backup still --drx` | ogni giorno | Rileva il DAY, elimina i `.drx` dalla sorgente e copia sul Drive le still: degli ultimi N minuti (chiesti a schermo) oppure, con `--drx`, tutte quelle ancora col `.drx`. |
 | `dm-backup report <log>` | all'occorrenza | Rigenera il report HTML + PDF da un file di log esistente. |
 
 ### Struttura cartelle e flusso
@@ -50,6 +50,9 @@ Flusso **`still`**: rileva il DAY → elimina i `.drx` → chiede i minuti → c
 Con `--drx` (o `still.mode: drx` nel config) niente prompt: prima di eliminare i `.drx` individua le
 still che hanno un `.drx` con lo stesso nome (= nuove, mai passate dal backup) e copia tutte quelle.
 La notifica finale mostra il numero di still copiate.
+
+Il flusso **`files`** termina con una notifica strutturata: DAY, cartelle copiate (con il numero
+di file) e, per ogni volume, l'esito della verifica, ad esempio `✓ TQCC_Work01 (140 file)`.
 
 ### Come viene identificata la cartella DAY
 
@@ -115,6 +118,22 @@ Lo script cerca la configurazione in quest'ordine:
 2. variabile d'ambiente `DM_BACKUP_CONFIG`
 3. `./config.yaml` nella cartella corrente
 
+### Modalità still
+
+```yaml
+still:
+  mode: minutes     # "minutes" = chiede gli ultimi N minuti | "drx" = copia le still con .drx omonimo
+  default_minutes: 5
+  delete_drx: true
+  extension: ".jpg"
+```
+
+- **`minutes`** (default): chiede a schermo quanti minuti di still copiare.
+- **`drx`**: nessun prompt. Le still con un `.drx` dello stesso nome (stessa cartella, nome base
+  uguale) sono quelle nuove, mai passate dal ciclo di backup, che cancella i `.drx`. Vengono
+  individuate **prima** della cancellazione e copiate tutte.
+- Da riga di comando `dm-backup still --drx` forza la modalità `drx` a prescindere dal config.
+
 ### Pattern rinomina still (DaVinci Resolve)
 
 Nello YAML scrivi **in parole semplici** cosa vuoi nel nome del file; l'eseguibile
@@ -144,7 +163,7 @@ compila Silverstack, quindi resta letterale.
 Azione **"Run"** (plugin che esegue comandi):
 - Command: `run`
 - Script: percorso completo a `bin/dm-backup`
-- Arguments (SENZA virgolette): `files` oppure `still`
+- Arguments (SENZA virgolette): `files`, `still` oppure `still --drx`
 
 Esempi:
 ```
