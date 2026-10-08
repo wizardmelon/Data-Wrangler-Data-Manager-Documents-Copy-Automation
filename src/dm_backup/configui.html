@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dm-backup · Configurazione</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--fg:#1d1d1f;--mute:#6e6e73;--line:#d9d9de;--acc:#0a66d9;--accfg:#fff;--ok:#1a7f37;--err:#c62828;--warn:#9a6700}
+@media (prefers-color-scheme:dark){:root{--bg:#161618;--card:#222226;--fg:#f2f2f4;--mute:#9b9ba3;--line:#3a3a40;--acc:#4a9dff;--accfg:#06121f;--ok:#4cc26a;--err:#ff6b6b;--warn:#e0b341}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;flex:1 1 auto}
+header small{color:var(--mute);display:block;font-weight:400;font-size:12px;word-break:break-all}
+main{max-width:860px;margin:0 auto;padding:16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+section h2{margin:0 0 4px;font-size:16px}
+section p.hint{margin:0 0 12px;color:var(--mute);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+label{display:block;font-size:13px;color:var(--mute)}
+label>span.t{display:block;margin-bottom:3px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+textarea{min-height:90px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
+.row{display:flex;gap:6px}.row>input{flex:1}
+button{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.primary{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:600}
+.check{display:flex;gap:8px;align-items:flex-start;color:var(--fg);font-size:14px;margin:6px 0}
+.check small{display:block;color:var(--mute)}
+.list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.item{display:flex;gap:6px}.item input{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer;background:var(--bg)}
+.chip.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.pattern{font-family:ui-monospace,Menlo,monospace;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;word-break:break-all}
+#msg{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);max-width:92vw;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:none;z-index:9}
+#msg.ok{border-color:var(--ok)}#msg.err{border-color:var(--err)}
+#msg ul{margin:6px 0 0;padding-left:18px;color:var(--warn);font-size:13px}
+.dirty{color:var(--warn);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>dm-backup · Configurazione<small id="cfgpath"></small></h1>
+  <span id="dirty" class="dirty"></span>
+  <button id="reload">Ricarica dal file</button>
+  <button id="save" class="primary">Salva</button>
+  <button id="quit">Chiudi</button>
+</header>
+<main id="main"><p>Caricamento…</p></main>
+<div id="msg"></div>
+
+<script>
+const TOKEN="__TOKEN__";
+let cfg=null, aliases=[], volumes=[], dirty=false;
+
+async function api(path,body){
+  const opt={headers:{"X-Token":TOKEN}};
+  if(body!==undefined){opt.method="POST";opt.body=JSON.stringify(body);opt.headers["Content-Type"]="application/json";}
+  const r=await fetch(path,opt); return r.json();
+}
+function get(p){return p.split(".").reduce((o,k)=>o&&o[k],cfg)}
+function set(p,v){const ks=p.split(".");let o=cfg;for(const k of ks.slice(0,-1))o=o[k]=o[k]||{};o[ks.at(-1)]=v;markDirty();}
+function markDirty(){dirty=true;document.getElementById("dirty").textContent="● modifiche non salvate";}
+function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+function toast(html,kind){const m=document.getElementById("msg");m.className=kind;m.innerHTML=html;m.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display="none",kind==="err"?9000:6000);}
+
+// ---- componenti ----
+function text(p,label,opts={}){
+  return `<label><span class="t">${label}</span><input type="text" data-p="${p}" value="${esc(get(p))}" placeholder="${esc(opts.ph||"")}"></label>`;}
+function num(p,label){return `<label><span class="t">${label}</span><input type="number" data-p="${p}" data-num="1" value="${esc(get(p))}"></label>`;}
+function pathField(p,label,hint){
+  return `<label><span class="t">${label}</span><div class="row"><input type="text" data-p="${p}" value="${esc(get(p))}"><button type="button" data-browse="${p}">Sfoglia…</button></div></label>`;}
+function check(p,label,hint,yn){
+  const v=get(p); const on=yn?String(v).toLowerCase().startsWith("y")||v===true:!!v;
+  return `<label class="check"><input type="checkbox" data-p="${p}" ${yn?'data-yn="1"':""} ${on?"checked":""}><span>${label}${hint?`<small>${hint}</small>`:""}</span></label>`;}
+function listField(p,label,hint,extra=""){
+  const arr=get(p)||[];
+  return `<div data-list="${p}"><span class="t" style="font-size:13px;color:var(--mute)">${label}</span>${hint?`<p class="hint" style="margin:2px 0 6px">${hint}</p>`:""}
+  <div class="list">${arr.map((v,i)=>`<div class="item"><input type="text" data-li="${p}" data-i="${i}" value="${esc(v)}"><button type="button" data-del="${p}" data-i="${i}" title="Rimuovi">✕</button></div>`).join("")}</div>
+  <button type="button" data-add="${p}">+ Aggiungi</button> ${extra}</div>`;}
+
+function render(){
+  const m=document.getElementById("main");
+  const fixed=get("disks.fixed_disks")||[];
+  m.innerHTML=`
+  <section><h2>Film e crew</h2><p class="hint">Finiscono nell'intestazione del log giornaliero.</p>
+    <div class="grid">${text("project.film","Film (obbligatorio)")}${text("project.prod","Produzione")}${text("project.regia","Regia")}${text("project.dop","Direttore della fotografia")}${text("project.dit","DIT")}${text("project.dmanager","Data Manager")}</div></section>
+
+  <section><h2>Cartelle di lavoro</h2><p class="hint">Dove vivono i file del film su questo computer.</p>
+    <div class="grid">${pathField("paths.project_root","Radice del film")}${pathField("paths.today_files","TODAY_FILES (lavoro del giorno)")}${pathField("paths.daily_files","DAILY_FILES (DAY master / Silverstack)")}${pathField("paths.log_folder","Cartella log (vuoto = &lt;radice&gt;/LOGS)")}${pathField("paths.drive_reports","Google Drive · report")}${pathField("paths.drive_stills","Google Drive · still")}</div></section>
+
+  <section><h2>Cartelle copiate dal backup file</h2><p class="hint">Sottocartelle di TODAY_FILES che il comando <b>files</b> copia nel DAY master.</p>
+    <div class="grid">${text("structure.still_source","Cartella sorgente delle still")}${text("structure.reports_subfolder","Sottocartella report nel DAY")}</div><br>
+    ${listField("structure.files_folders","Cartelle da copiare","")}</section>
+
+  <section><h2>Dischi e spola</h2><p class="hint">Volumi montati in /Volumes. Il nome può essere un prefisso (es. <code>TQCC_Work0</code> trova <code>TQCC_Work01</code>).</p>
+    <div class="grid">${text("spola.prefix","Prefisso della spola (es. TQCC_TRAVELER)")}${text("spola.reports_subfolder","Sottocartella report della spola")}</div><br>
+    ${listField("disks.fixed_disks","Dischi fissi di destinazione","",`<span style="color:var(--mute);font-size:13px">oppure aggiungi un volume montato:</span><div class="chips">${volumes.map(v=>`<span class="chip ${fixed.includes(v)?"on":""}" data-vol="${esc(v)}">${esc(v)}</span>`).join("")||"<i style='color:var(--mute)'>nessun volume trovato</i>"}</div>`)}
+    ${check("disks.include_spola","Copia anche sulla spola","La spola rilevata riceve il DAY master come ultimo disco.")}</section>
+
+  <section><h2>Still</h2><p class="hint">Come il comando <b>still</b> sceglie le immagini da copiare.</p>
+    <div class="grid"><label><span class="t">Modalità</span><select data-p="still.mode"><option value="minutes" ${get("still.mode")==="minutes"?"selected":""}>Ultimi N minuti (chiede a schermo)</option><option value="drx" ${get("still.mode")==="drx"?"selected":""}>Tutte le still con .drx omonimo</option></select></label>
+    ${num("still.default_minutes","Minuti proposti di default")}${text("still.extension","Estensione delle still")}</div>
+    ${check("still.delete_drx","Elimina i .drx dopo averli individuati","Nella modalità .drx le still nuove vengono riconosciute prima della cancellazione.")}</section>
+
+  <section><h2>Nome della cartella DAY</h2><p class="hint">La data è <i>adesso − N ore</i>, così le notturne oltre mezzanotte finiscono nel giorno di ripresa.</p>
+    <div class="grid">${num("day_hour_offset","Ore da sottrarre")}</div></section>
+
+  <section><h2>Sicurezza e pulizia</h2>
+    ${check("safety.verify_checksum","Verifica checksum","TODAY viene svuotata solo se la verifica passa su tutti i dischi.")}
+    ${check("safety.write_mhl","Scrivi manifest MHL")}${check("safety.check_space","Controlla lo spazio libero prima di copiare")}
+    ${check("cleanup.spola_folder","Rimuovi la cartella della spola in DAILY_FILES a fine copia")}</section>
+
+  <section><h2>Rinomina still per DaVinci Resolve</h2><p class="hint">Il token col DAY viene aggiunto in coda automaticamente.</p>
+    <div class="grid">${text("still_rename.prefix","Prefisso")}${text("still_rename.separator","Separatore")}
+    <label><span class="t">Token che porta il DAY</span><select data-p="still_rename.day_token">${aliases.map(a=>`<option ${get("still_rename.day_token")===a?"selected":""}>${a}</option>`).join("")}</select></label></div>
+    <p style="margin:12px 0 4px;font-size:13px;color:var(--mute)">Campi nel nome (clicca per attivare, l'ordine è quello di selezione):</p>
+    <div class="chips" id="fieldchips">${aliases.map(a=>`<span class="chip ${(get("still_rename.fields")||[]).includes(a)?"on":""}" data-fld="${a}">${a}</span>`).join("")}</div>
+    <p style="margin:12px 0 4px;font-size:13px;color:var(--mute)">Pattern da incollare in Resolve:</p><div class="pattern" id="pattern">…</div></section>
+
+  <section><h2>Struttura creata da <code>init</code> a inizio film</h2><p class="hint">Percorsi relativi alla radice del film (anche annidati).</p>
+    ${listField("project_folders","Cartelle","")}</section>
+
+  <section><h2>Email di fine giornata</h2><p class="hint">Crea una bozza in Mail con i report allegati; non viene mai inviata da sola. Segnaposto: {DAY} {DATA} {FILM}</p>
+    ${check("email.invia_email","Prepara la bozza email","",true)}
+    <div class="grid">${text("email.mailinglist","Destinatari (separati da virgola)")}${text("email.oggetto","Oggetto")}</div><br>
+    <label><span class="t">Testo</span><textarea data-p="email.testo">${esc(get("email.testo"))}</textarea></label>
+    ${check("email.allega_report_giornata","Allega i report di Silverstack","",true)}${check("email.allega_report_pdf","Allega il report riepilogativo PDF","",true)}</section>`;
+  updatePattern();
+}
+
+let pt;function updatePattern(){clearTimeout(pt);pt=setTimeout(async()=>{
+  const r=await api("/api/preview",cfg.still_rename);const el=document.getElementById("pattern");if(!el)return;
+  el.textContent=r.pattern||("⚠ "+r.error);},120);}
+
+// ---- eventi ----
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.dataset.p&&t.type!=="checkbox"){let v=t.value;if(t.dataset.num)v=v===""?"":Number(v);set(t.dataset.p,v);if(t.dataset.p.startsWith("still_rename"))updatePattern();}
+  if(t.dataset.li){get(t.dataset.li)[+t.dataset.i]=t.value;markDirty();}
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.dataset.p&&t.type==="checkbox")set(t.dataset.p,t.dataset.yn?(t.checked?"y":"n"):t.checked);
+  if(t.tagName==="SELECT"&&t.dataset.p){set(t.dataset.p,t.value);if(t.dataset.p.startsWith("still_rename"))updatePattern();}
+});
+document.addEventListener("click",async e=>{
+  const t=e.target;
+  if(t.dataset.add){const a=get(t.dataset.add)||[];a.push("");set(t.dataset.add,a);render();document.querySelectorAll(`[data-li="${t.dataset.add}"]`).forEach((x,i,all)=>{if(i===all.length-1)x.focus()});}
+  else if(t.dataset.del){get(t.dataset.del).splice(+t.dataset.i,1);markDirty();render();}
+  else if(t.dataset.vol){const a=get("disks.fixed_disks")||[];const i=a.indexOf(t.dataset.vol);i>=0?a.splice(i,1):a.push(t.dataset.vol);set("disks.fixed_disks",a);render();}
+  else if(t.dataset.fld){const a=get("still_rename.fields")||[];const i=a.indexOf(t.dataset.fld);i>=0?a.splice(i,1):a.push(t.dataset.fld);set("still_rename.fields",a);render();}
+  else if(t.dataset.browse){const r=await api("/api/browse",{prompt:"Scegli la cartella"});if(r.path){set(t.dataset.browse,r.path);render();}}
+});
+document.getElementById("save").onclick=async()=>{
+  // elimina voci vuote dalle liste prima di salvare
+  for(const p of ["structure.files_folders","disks.fixed_disks","project_folders"])set(p,(get(p)||[]).map(s=>s.trim()).filter(Boolean));
+  const r=await api("/api/save",cfg);
+  if(r.ok){dirty=false;document.getElementById("dirty").textContent="";render();
+    toast(`✓ Salvato.${r.backup?`<br><small>Backup precedente: ${esc(r.backup)}</small>`:""}${r.warnings.length?`<ul>${r.warnings.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}`,"ok");}
+  else toast("✗ Non salvato: "+esc(r.error),"err");
+};
+document.getElementById("reload").onclick=()=>{if(!dirty||confirm("Scartare le modifiche non salvate?"))load();};
+document.getElementById("quit").onclick=async()=>{if(dirty&&!confirm("Ci sono modifiche non salvate. Chiudere comunque?"))return;
+  await api("/api/quit",{});document.body.innerHTML="<p style='padding:24px'>Editor chiuso. Puoi chiudere questa scheda.</p>";};
+window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
+
+async function load(){
+  const [c,v]=await Promise.all([api("/api/config"),api("/api/volumes")]);
+  cfg=c.config;aliases=c.aliases;volumes=v.volumes;dirty=false;
+  document.getElementById("dirty").textContent="";document.getElementById("cfgpath").textContent=c.path;render();
+}
+load();
+</script>
+</body>
+</html>

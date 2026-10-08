@@ -18,13 +18,14 @@ La logica dell'originale è conservata in [`legacy/00_DOCUMENTS_v1.4.md`](legacy
 
 ## Cosa fa
 
-Un unico eseguibile, `dm-backup`, con quattro sottocomandi:
+Un unico eseguibile, `dm-backup`, con questi sottocomandi:
 
 | Comando | Quando | Azione |
 |---|---|---|
 | `dm-backup init` | **una volta, a inizio film** | Crea la struttura di cartelle del progetto (da YAML) sotto la radice del film e genera i file di riferimento per Silverstack e DaVinci Resolve. |
 | `dm-backup files` | ogni giorno | Consolida i documenti del giorno nel DAY master di `DAILY_FILES` e li copia **dentro la cartella DAY già esistente** su ogni disco (dischi fissi + spola), con verifica checksum, manifest MHL e report finale. |
 | `dm-backup still` / `dm-backup still --drx` | ogni giorno | Rileva il DAY, elimina i `.drx` dalla sorgente e copia sul Drive le still: degli ultimi N minuti (chiesti a schermo) oppure, con `--drx`, tutte quelle ancora col `.drx`. |
+| `dm-backup config` | a inizio film e quando serve | Apre nel browser un **editor grafico** di `config.yaml` (crew, cartelle, dischi, spola, modalità still, rinomina Resolve, email…). |
 | `dm-backup report <log>` | all'occorrenza | Rigenera il report HTML + PDF da un file di log esistente. |
 
 ### Struttura cartelle e flusso
@@ -117,6 +118,19 @@ Lo script cerca la configurazione in quest'ordine:
 1. `--config /percorso/config.yaml`
 2. variabile d'ambiente `DM_BACKUP_CONFIG`
 3. `./config.yaml` nella cartella corrente
+
+### Editor grafico (`dm-backup config`)
+
+```bash
+dm-backup --config /percorso/config.yaml config
+```
+
+Avvia un server **solo locale** (127.0.0.1, protetto da token) e apre una pagina con tutte le
+impostazioni: pulsante *Sfoglia…* per le cartelle, elenco dei volumi montati da selezionare,
+anteprima in tempo reale del pattern Resolve. Prima di salvare valida la configurazione con le
+stesse regole dei comandi e **copia il file esistente in `.backups/`** (con data e ora). Le chiavi
+sconosciute vengono conservate; i commenti del vecchio file no (per quelli vedi `config.example.yaml`).
+Il file si può comunque modificare a mano.
 
 ### Modalità still
 

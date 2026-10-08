@@ -4,6 +4,7 @@ Uso (da Stream Deck, senza virgolette sugli argomenti):
     dm-backup files             # uso quotidiano
     dm-backup still             # uso quotidiano (ultimi N minuti)
     dm-backup still --drx       # tutte le still con .drx omonimo
+    dm-backup config            # editor grafico di config.yaml
     dm-backup init [base]       # setup di INIZIO FILM (una volta sola)
     dm-backup report <log>
 
@@ -43,6 +44,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Copia tutte le still che hanno un .drx con lo stesso nome (niente prompt minuti)",
     )
 
+    sub.add_parser("config", help="Apre l'editor grafico (pagina HTML locale) di config.yaml")
+
     p_init = sub.add_parser(
         "init",
         help="SETUP INIZIO FILM: crea la struttura del progetto + file di riferimento",
@@ -65,6 +68,11 @@ def main(argv: Optional[list] = None) -> int:
         if args.command == "report":
             out = workflows.run_report(args.log_path)
             print(f"Report: {out['html']}" + (f"\nPDF: {out['pdf']}" if out["pdf"] else ""))
+            return 0
+
+        if args.command == "config":
+            from . import configui
+            configui.run_config_ui(args.config or _default_config_path())
             return 0
 
         config = _load_config(args.config)
