@@ -65,6 +65,7 @@ day_hour_offset: 8
 
 # --- Modalità still ---
 still:
+  mode: minutes        # "minutes" = chiede gli ultimi N min | "drx" = copia le still con .drx omonimo
   default_minutes: 5     # default del prompt "ultimi N minuti"
   delete_drx: true       # elimina i .drx dalla sorgente still prima di copiare
   extension: ".jpg"      # copia solo i file con questa estensione

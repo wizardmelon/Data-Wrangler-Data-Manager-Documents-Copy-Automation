@@ -24,7 +24,7 @@ Un unico eseguibile, `dm-backup`, con quattro sottocomandi:
 |---|---|---|
 | `dm-backup init` | **una volta, a inizio film** | Crea la struttura di cartelle del progetto (da YAML) sotto la radice del film e genera i file di riferimento per Silverstack e DaVinci Resolve. |
 | `dm-backup files` | ogni giorno | Consolida i documenti del giorno nel DAY master di `DAILY_FILES` e li copia **dentro la cartella DAY già esistente** su ogni disco (dischi fissi + spola), con verifica checksum, manifest MHL e report finale. |
-| `dm-backup still` | ogni giorno | Rileva il DAY, elimina i `.drx` dalla sorgente e copia sul Drive le still degli ultimi N minuti (chiesti a schermo). |
+| `dm-backup still` / `dm-backup still --drx` | ogni giorno | Rileva il DAY, elimina i `.drx` dalla sorgente e copia sul Drive le still degli ultimi N minuti (chiesti a schermo). |
 | `dm-backup report <log>` | all'occorrenza | Rigenera il report HTML + PDF da un file di log esistente. |
 
 ### Struttura cartelle e flusso
@@ -47,6 +47,9 @@ master **dentro** il DAY già esistente su ogni disco (fissi + spola); (6) svuot
 
 Flusso **`still`**: rileva il DAY → elimina i `.drx` → chiede i minuti → copia su
 `Drive/<stills>/DAYxxx` solo i `*.jpg` degli ultimi N minuti.
+Con `--drx` (o `still.mode: drx` nel config) niente prompt: prima di eliminare i `.drx` individua le
+still che hanno un `.drx` con lo stesso nome (= nuove, mai passate dal backup) e copia tutte quelle.
+La notifica finale mostra il numero di still copiate.
 
 ### Come viene identificata la cartella DAY
 

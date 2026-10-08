@@ -134,6 +134,7 @@ class ProjectConfig:
 
     # --- Modalità still ---
     still_default_minutes: int = 5          # default del prompt "ultimi N minuti"
+    still_mode: str = "minutes"             # "minutes" (ultimi N min) | "drx" (still con .drx)
     still_delete_drx: bool = True           # elimina i .drx prima della copia
     still_extension: str = ".jpg"           # estensione delle still copiate
 
@@ -227,6 +228,7 @@ class ProjectConfig:
             include_spola_as_disk=bool(disks.get("include_spola", True)),
             day_hour_offset=int(data.get("day_hour_offset", 6)),
             still_default_minutes=int(still_cfg.get("default_minutes", 5)),
+            still_mode=str(still_cfg.get("mode", "minutes")).strip().lower(),
             still_delete_drx=bool(still_cfg.get("delete_drx", True)),
             still_extension=str(still_cfg.get("extension", ".jpg")),
             verify_checksum=bool(safety.get("verify_checksum", True)),

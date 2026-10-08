@@ -127,3 +127,16 @@ def test_verify_files_partial(tmp_path):
     missing = copyops.verify_files(str(src), str(dest), ["a.jpg", "b.jpg"])
     assert not missing.ok
     assert "b.jpg" in missing.missing
+
+
+def test_find_stills_with_drx_and_copy(tmp_path):
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+    _make_tree(str(src), {"a.jpg": "A", "a.drx": "x", "b.jpg": "B",
+                          "sub/C.JPG": "C", "sub/c.drx": "y", "d.drx": "z"})
+    found = copyops.find_stills_with_drx(str(src), only_ext=".jpg")
+    assert found == ["a.jpg", os.path.join("sub", "C.JPG")]
+    copied = copyops.copy_files(str(src), str(dest), found)
+    assert copied == found
+    assert (dest / "a.jpg").is_file() and (dest / "sub" / "C.JPG").is_file()
+    assert not (dest / "b.jpg").exists()

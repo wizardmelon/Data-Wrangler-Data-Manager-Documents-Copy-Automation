@@ -2,7 +2,8 @@
 
 Uso (da Stream Deck, senza virgolette sugli argomenti):
     dm-backup files             # uso quotidiano
-    dm-backup still             # uso quotidiano
+    dm-backup still             # uso quotidiano (ultimi N minuti)
+    dm-backup still --drx       # tutte le still con .drx omonimo
     dm-backup init [base]       # setup di INIZIO FILM (una volta sola)
     dm-backup report <log>
 
@@ -36,7 +37,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("files", help="Copia i documenti del giorno nei dischi di backup")
-    sub.add_parser("still", help="Copia le still sul drive (autodetect DAY)")
+p_still = sub.add_parser("still", help="Copia le still sul drive (autodetect DAY)")
+    p_still.add_argument(
+        "--drx", action="store_true",
+        help="Copia tutte le still che hanno un .drx con lo stesso nome (niente prompt minuti)",
+    )
 
     p_init = sub.add_parser(
         "init",
@@ -67,7 +72,7 @@ def main(argv: Optional[list] = None) -> int:
         if args.command == "files":
             workflows.run_files_mode(config)
         elif args.command == "still":
-            workflows.run_still_mode(config)
+            workflows.run_still_mode(config, drx_mode=True if args.drx else None)
         elif args.command == "init":
             base = args.base or config.project_root or config.daily_files
             out = workflows.run_init(config, base)

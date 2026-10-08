@@ -168,6 +168,40 @@ def delete_by_extension(folder: str, ext: str) -> int:
     return removed
 
 
+def find_stills_with_drx(src: str, only_ext: str | None = None) -> List[str]:
+    """Percorsi relativi delle still che hanno un .drx con lo stesso nome.
+
+    Una still è "nuova" (mai passata dal ciclo di backup, che cancella i .drx)
+    se accanto a lei esiste un .drx con lo stesso nome base. Va chiamata PRIMA
+    di eliminare i .drx.
+    """
+    if not os.path.isdir(src):
+        return []
+    ext_low = only_ext.lower() if only_ext else None
+    found: List[str] = []
+    for dirpath, _dirs, files in os.walk(src):
+        drx_stems = {os.path.splitext(n)[0].lower() for n in files
+                     if n.lower().endswith(".drx")}
+        for name in files:
+            stem, ext = os.path.splitext(name)
+            if ext.lower() == ".drx" or stem.lower() not in drx_stems:
+                continue
+            if ext_low and ext.lower() != ext_low:
+                continue
+            found.append(os.path.relpath(os.path.join(dirpath, name), src))
+    return sorted(found)
+
+
+def copy_files(src: str, dest: str, rel_paths: List[str]) -> List[str]:
+    """Copia in `dest` i file elencati (percorsi relativi a `src`)."""
+    os.makedirs(dest, exist_ok=True)
+    for rel in rel_paths:
+        target = os.path.join(dest, rel)
+        os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+        shutil.copy2(os.path.join(src, rel), target)
+    return list(rel_paths)
+
+
 def copy_recent_files(src: str, dest: str, minutes: int,
                       only_ext: str | None = None) -> List[str]:
     """Copia in `dest` solo i file di `src` modificati negli ultimi `minutes`.

@@ -16,6 +16,8 @@ STILL:
   1. rileva il DAY
   2. elimina i .drx dalla sorgente still
   3. copia sul Drive solo le still degli ultimi N minuti (prompt)
+     oppure (modo --drx) tutte le still con un .drx omonimo, individuate
+     PRIMA di eliminare i .drx
 
 Le funzioni "pure" (rilevamento DAY, costruzione nomi) sono separate e testabili
 senza macOS.
@@ -229,7 +231,12 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
 # ----------------------------------------------------------------------
 # Comando STILL
 # ----------------------------------------------------------------------
-def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_ROOT) -> None:
+def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_ROOT,
+                   drx_mode: Optional[bool] = None) -> None:
+    """`drx_mode`: None = usa still.mode del config; True/False forza il modo."""
+    if drx_mode is None:
+        drx_mode = config.still_mode == "drx"
+
     log = DayLogger(config, "still")
     log.start()
 
@@ -239,21 +246,29 @@ def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
 
     src = config.still_source_path
 
+    # Modo DRX: individua le still nuove PRIMA di eliminare i .drx.
+    drx_stills: List[str] = []
+    if drx_mode:
+        drx_stills = copyops.find_stills_with_drx(src, only_ext=config.still_extension)
+        log.write(f"Modo DRX: {len(drx_stills)} still con .drx omonimo in {src}")
+
     # Elimina i .drx dalla sorgente still.
     if config.still_delete_drx:
         copyops.delete_by_extension(src, ".drx")
         log.write(f"DRX eliminate dalla cartella {src}")
 
-    # Prompt: ultimi N minuti.
-    minutes_raw = gui.ask_text("Inserisci MIN da export:", str(config.still_default_minutes))
-    try:
-        minutes = int(minutes_raw)
-    except ValueError:
-        minutes = config.still_default_minutes
-    log.write(f"Selezionati {minutes} minuti di file da copiare.")
-
     dest = os.path.join(config.drive_stills, day_name)
-    copied = copyops.copy_recent_files(src, dest, minutes, only_ext=config.still_extension)
+    if drx_mode:
+        copied = copyops.copy_files(src, dest, drx_stills)
+    else:
+        # Prompt: ultimi N minuti.
+        minutes_raw = gui.ask_text("Inserisci MIN da export:", str(config.still_default_minutes))
+        try:
+            minutes = int(minutes_raw)
+        except ValueError:
+            minutes = config.still_default_minutes
+        log.write(f"Selezionati {minutes} minuti di file da copiare.")
+        copied = copyops.copy_recent_files(src, dest, minutes, only_ext=config.still_extension)
     log.write(f"Inizio copia di {len(copied)} still da {src} a {dest}")
 
     if config.verify_checksum and copied:
@@ -266,7 +281,11 @@ def run_still_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
             raise SystemExit(2)
 
     log.write(f"{len(copied)} still copiate in {dest}")
-    gui.display_notification("Copia still completata.")
+    n = len(copied)
+    if n:
+        gui.display_notification(f"Cartella {day_name}", title=f"{n} still copiate")
+    else:
+        gui.display_notification("Nessuna still da copiare", title="Copia still completata")
     log.end()
 
 
