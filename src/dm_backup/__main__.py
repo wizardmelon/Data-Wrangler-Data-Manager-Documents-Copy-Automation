@@ -37,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("files", help="Copia i documenti del giorno nei dischi di backup")
-p_still = sub.add_parser("still", help="Copia le still sul drive (autodetect DAY)")
+    p_still = sub.add_parser("still", help="Copia le still sul drive (autodetect DAY)")
     p_still.add_argument(
         "--drx", action="store_true",
         help="Copia tutte le still che hanno un .drx con lo stesso nome (niente prompt minuti)",
