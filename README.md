@@ -184,16 +184,20 @@ compila Silverstack, quindi resta letterale.
 
 ## Uso con Stream Deck
 
-Azione **"Run"** (plugin che esegue comandi):
-- Command: `run`
-- Script: percorso completo a `bin/dm-backup`
-- Arguments (SENZA virgolette): `files`, `still` oppure `still --drx`
+Si usa l'azione **Run Shell Command** del plugin **Mac Automation** (categoria *Mac Automation* nel
+pannello azioni di Stream Deck). Nel campo del comando incolla il percorso di `bin/dm-backup`, il
+percorso del tuo `config.yaml` e l'azione, **con gli apici singoli** attorno ai percorsi (servono se
+contengono spazi, come nelle cartelle iCloud):
 
-Esempi:
+```bash
+'/percorso/dm-backup/bin/dm-backup' --config '/percorso/dm-backup/config.yaml' files
+'/percorso/dm-backup/bin/dm-backup' --config '/percorso/dm-backup/config.yaml' still
+'/percorso/dm-backup/bin/dm-backup' --config '/percorso/dm-backup/config.yaml' still --drx
+'/percorso/dm-backup/bin/dm-backup' --config '/percorso/dm-backup/config.yaml' config
 ```
-run /Users/dit/.../bin/dm-backup files
-run /Users/dit/.../bin/dm-backup still
-```
+
+Un tasto per azione: `files` (backup documenti), `still` (still a minuti), `still --drx` (still con
+.drx) e `config` (editor grafico).
 
 `init` si lancia da terminale a inizio film, non serve un pulsante Stream Deck.
 
