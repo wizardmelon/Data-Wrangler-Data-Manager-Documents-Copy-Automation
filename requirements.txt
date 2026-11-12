@@ -1,2 +1,2 @@
 PyYAML>=6.0
-reportlab>=4.0
+reportlab>=4.0,<5.1  # 5.1+ richiede Python 3.10+ (il Python di macOS è 3.9)

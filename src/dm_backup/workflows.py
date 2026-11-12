@@ -344,6 +344,9 @@ def _try_report(log: DayLogger) -> Optional[dict]:
     try:
         out = report.generate(log.log_file)
         log.write(f"Report generato: {out['html']}" + (f" / {out['pdf']}" if out["pdf"] else ""))
+        if not out["pdf"]:
+            log.write("ATTENZIONE: PDF non generato (reportlab assente o non compatibile con questo Python): "
+                      "controlla requirements.txt / la cartella .venv")
         return out
     except Exception as exc:  # pragma: no cover - il report non deve bloccare
         log.write(f"ATTENZIONE: report non generato: {exc}")
