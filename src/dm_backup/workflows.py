@@ -4,7 +4,8 @@ Il flusso replica quello reale ricostruito dai log del progetto ISIDE:
 
 FILES:
   1. rileva la cartella DAY master in DAILY_FILES (creata da Silverstack)
-  2. rileva la spola (volume montato con prefisso configurato)
+  2. rileva la spola (volume montato con prefisso configurato; con più spole
+     montate si possono usare TUTTE: report e copia valgono per ciascuna)
   3. copia i report della spola  -> DAY_master/REPORTS
   4. copia i report            -> Drive/REPORTS/<DAY>
   5. copia le cartelle sorgente da TODAY_FILES -> DAY_master
@@ -110,6 +111,28 @@ def resolve_spola(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_R
     return gui.choose_from_list(disks, "Più spole montate. Quale usare?")
 
 
+ALL_SPOLE_LABEL = "TUTTE le spole montate"
+
+
+def resolve_spole(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_ROOT) -> List[str]:
+    """Spole da usare: una sola se ce n'è una; con più spole chiede se usarle TUTTE o una.
+
+    Caso "due traveler": i report e la copia dei documenti valgono per ciascuna spola.
+    """
+    disks = diskutils.find_spola_disks(config.spola_prefix, volumes_root)
+    if not disks:
+        raise RuntimeError(
+            f"Nessuna spola trovata (prefisso '{config.spola_prefix}'). "
+            "Verifica che il disco sia montato."
+        )
+    if len(disks) == 1:
+        return disks
+    choice = gui.choose_from_list(
+        [ALL_SPOLE_LABEL] + disks,
+        f"Più spole montate ({', '.join(disks)}). Quale usare?")
+    return disks if choice == ALL_SPOLE_LABEL else [choice]
+
+
 def resolve_fixed_disk(name: str, volumes_root: str = diskutils.VOLUMES_ROOT) -> str:
     """Risolve il nome reale di un disco fisso montato.
 
@@ -147,8 +170,9 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     log = DayLogger(config, "files")
     log.start()
 
-    spola = resolve_spola(config, volumes_root)
-    log.write(f"Spola trovata: {spola}")
+    spole = resolve_spole(config, volumes_root)
+    log.write(f"Spola trovata: {', '.join(spole)}" if len(spole) == 1
+              else f"Spole trovate: {', '.join(spole)}")
 
     day_num = resolve_day_number(config)
     day_name = build_folder_name(day_num, config.day_hour_offset)
@@ -159,12 +183,13 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
     reports_dir = os.path.join(master, config.reports_subfolder)
 
     # 1) Report della spola -> DAY_master/REPORTS (stop se mancano, come l'originale)
-    spola_folder = os.path.join(config.daily_files, spola)
-    spola_reports = os.path.join(spola_folder, config.spola_reports_subfolder)
-    if not os.path.isdir(spola_reports):
-        _fail(log, f"La cartella REPORT della spola non esiste: {spola_reports}")
-    copyops.copy_into(spola_reports, reports_dir)
-    log.write(f"{copyops.count_files(spola_reports)} report spola copiati in {reports_dir}")
+    spola_folders = {sp: os.path.join(config.daily_files, sp) for sp in spole}
+    for sp in spole:
+        spola_reports = os.path.join(spola_folders[sp], config.spola_reports_subfolder)
+        if not os.path.isdir(spola_reports):
+            _fail(log, f"La cartella REPORT della spola non esiste: {spola_reports}")
+        copyops.copy_into(spola_reports, reports_dir)
+        log.write(f"{copyops.count_files(spola_reports)} report spola ({sp}) copiati in {reports_dir}")
 
     # 2) Report -> Drive/REPORTS/<DAY>
     if config.drive_reports:
@@ -186,8 +211,10 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
 
     # 4) Destinazioni = dischi fissi (+ spola)
     destinations = list(config.fixed_disks)
-    if config.include_spola_as_disk and spola not in destinations:
-        destinations.append(spola)
+    if config.include_spola_as_disk:
+        for sp in spole:
+            if sp not in destinations:
+                destinations.append(sp)
 
     needed = diskutils.dir_size_bytes(master)
     all_verified = True
@@ -232,9 +259,11 @@ def run_files_mode(config: ProjectConfig, volumes_root: str = diskutils.VOLUMES_
                 copyops.recreate_folder(src)
                 log.write(f"{src} eliminata e ricreata vuota.")
         # Cancella la cartella della spola in DAILY_FILES (report già spostato).
-        if config.cleanup_spola_folder and os.path.isdir(spola_folder):
-            shutil.rmtree(spola_folder)
-            log.write(f"Cartella spola rimossa: {spola_folder}")
+        if config.cleanup_spola_folder:
+            for spola_folder in spola_folders.values():
+                if os.path.isdir(spola_folder):
+                    shutil.rmtree(spola_folder)
+                    log.write(f"Cartella spola rimossa: {spola_folder}")
         title, subtitle, body = format_files_notification(
             day_name, folder_counts, disk_results, config.verify_checksum)
         gui.display_notification(body, title=title, subtitle=subtitle)

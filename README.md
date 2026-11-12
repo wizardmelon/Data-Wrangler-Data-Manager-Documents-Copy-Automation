@@ -55,6 +55,11 @@ La notifica finale mostra il numero di still copiate.
 Il flusso **`files`** termina con una notifica strutturata: DAY, cartelle copiate (con il numero
 di file) e, per ogni volume, l'esito della verifica, ad esempio `✓ TQCC_Work01 (140 file)`.
 
+**Più spole montate (es. due traveler):** `files` chiede quale usare; scegliendo **TUTTE le spole montate**
+i report di ciascuna vengono uniti nel DAY master, il DAY master viene copiato (e verificato) su
+ognuna oltre che sui dischi fissi, e a fine lavoro le cartelle di tutte le spole in `DAILY_FILES` vengono
+rimosse. Il prefisso `spola.prefix` deve trovare entrambe (es. `TQCC_TRAVELER`).
+
 ### Come viene identificata la cartella DAY
 
 Il nome (`DAY023_20260525`) viene **costruito**, non letto:
